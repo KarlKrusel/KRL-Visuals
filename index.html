@@ -366,28 +366,92 @@
   }
   #lookRow{ display:flex; flex-wrap:wrap; gap:7px; }
   #paletteSection{ margin-bottom:13px; }
-  #paletteSectionLabel{
+  .menuDropdown{
+    margin-bottom:13px;
+  }
+  .menuDropdownHead{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:10px 11px;
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:7px;
+    background:rgba(255,255,255,0.05);
+    color:#fff;
+    cursor:pointer;
+    text-align:left;
+  }
+  .menuDropdownHeadText{
+    min-width:0;
+  }
+  .menuDropdownTitle{
+    display:block;
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
-    color:rgba(255,255,255,0.5); margin-bottom:7px;
+    font-size:10px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:rgba(255,255,255,0.72);
+  }
+  .menuDropdownMeta{
+    display:block;
+    margin-top:4px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:10px;
+    letter-spacing:0.04em;
+    color:rgba(255,255,255,0.48);
+    text-transform:uppercase;
+  }
+  .menuDropdownCaret{
+    flex:0 0 auto;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:12px;
+    color:rgba(255,255,255,0.72);
+    transition:transform .18s ease;
+  }
+  .menuDropdown.open .menuDropdownCaret{
+    transform:rotate(180deg);
+  }
+  .menuDropdownBody{
+    display:none;
+    margin-top:8px;
+  }
+  .menuDropdown.open .menuDropdownBody{
+    display:block;
   }
   #paletteGrid{
     display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(122px, 1fr));
     gap:7px;
+  }
+  .paletteRow{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) auto;
+    gap:8px;
+    align-items:center;
   }
   .paletteBtn{
     border:1px solid rgba(255,255,255,0.14);
-    border-radius:8px;
+    border-radius:6px;
     background:rgba(255,255,255,0.05);
     color:#fff;
-    padding:8px;
+    padding:10px;
     cursor:pointer;
     text-align:left;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
   }
   .paletteBtn.active{
     border-color:rgba(255,255,255,0.34);
     background:rgba(255,255,255,0.10);
+  }
+  .paletteBtn.enabled{
+    background:rgba(255,255,255,0.07);
+  }
+  .paletteInfo{
+    min-width:0;
   }
   .paletteSwatch{
     display:block;
@@ -406,6 +470,38 @@
     text-transform:uppercase;
     color:#fff;
     line-height:1.2;
+  }
+  .paletteState{
+    flex:0 0 auto;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:10px;
+    color:rgba(255,255,255,0.54);
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+  }
+  .paletteCheck{
+    width:44px;
+    min-width:44px;
+    height:44px;
+    display:grid;
+    place-items:center;
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:6px;
+    background:rgba(255,255,255,0.06);
+    color:#fff;
+    font-size:20px;
+    font-weight:900;
+    line-height:1;
+    cursor:pointer;
+  }
+  .paletteCheck.active{
+    background:rgba(255,255,255,0.14);
+    border-color:rgba(255,255,255,0.26);
+  }
+  .paletteActions{
+    display:flex;
+    gap:7px;
+    margin-top:8px;
   }
   .lookBtn{
     border:1px solid rgba(255,255,255,0.16);
@@ -482,7 +578,7 @@
     align-items:center;
   }
   .scenePreview,
-  .sceneLoopToggle{
+  .sceneCheck{
     border:1px solid rgba(255,255,255,0.12);
     border-radius:6px;
     color:#fff;
@@ -490,11 +586,30 @@
   }
   .scenePreview{
     background:rgba(255,255,255,0.04);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
     text-align:left;
-    padding:10px 10px 9px;
+    padding:11px 11px 10px;
   }
   .scenePreview.current{
     border-color:rgba(255,255,255,0.28);
+    background:rgba(255,255,255,0.10);
+  }
+  .scenePreview.inLoop{
+    background:rgba(255,255,255,0.07);
+  }
+  .scenePreviewText{
+    min-width:0;
+  }
+  .scenePreviewState{
+    flex:0 0 auto;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:10px;
+    color:rgba(255,255,255,0.54);
+    letter-spacing:0.06em;
+    text-transform:uppercase;
   }
   .scenePreviewLabel{
     display:block;
@@ -512,17 +627,18 @@
     letter-spacing:0.06em;
     text-transform:uppercase;
   }
-  .sceneLoopToggle{
-    min-width:98px;
-    padding:11px 12px;
+  .sceneCheck{
+    width:44px;
+    min-width:44px;
+    height:44px;
+    display:grid;
+    place-items:center;
     background:rgba(255,255,255,0.06);
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size:11px;
-    font-weight:800;
-    letter-spacing:0.06em;
-    text-transform:uppercase;
+    font-size:20px;
+    font-weight:900;
+    line-height:1;
   }
-  .sceneLoopToggle.active{
+  .sceneCheck.active{
     background:rgba(255,255,255,0.14);
     border-color:rgba(255,255,255,0.26);
   }
@@ -598,9 +714,20 @@
       <div id="lookSectionLabel">Style — press X to cycle</div>
       <div id="lookRow"></div>
     </div>
-    <div id="paletteSection">
-      <div id="paletteSectionLabel">Colorway selector</div>
-      <div id="paletteGrid"></div>
+    <div id="paletteSection" class="menuDropdown">
+      <button id="paletteDropdownToggle" class="menuDropdownHead" type="button">
+        <span class="menuDropdownHeadText">
+          <span class="menuDropdownTitle">Colorways</span>
+          <span class="menuDropdownMeta" id="paletteDropdownMeta">All enabled</span>
+        </span>
+        <span class="menuDropdownCaret">▾</span>
+      </button>
+      <div class="menuDropdownBody">
+        <div id="paletteGrid"></div>
+        <div class="paletteActions">
+          <button class="sceneMenuBtn" id="paletteAllOn" type="button">All On</button>
+        </div>
+      </div>
     </div>
     <div id="settingsSection">
       <div id="settingsLabel">Timing &amp; color</div>
@@ -630,9 +757,29 @@
         <button class="settingToggle" id="sceneLockToggle" type="button">Off</button>
       </div>
       <div class="settingRow">
+        <span class="settingName">Velocity transition</span>
+        <span></span>
+        <button class="settingToggle" id="velocityTransitionToggle" type="button">Off</button>
+      </div>
+      <div class="settingRow">
+        <span class="settingName">Scene flow</span>
+        <span></span>
+        <button class="settingToggle" id="sceneFlowToggle" type="button">Off</button>
+      </div>
+      <div class="settingRow">
         <span class="settingName">Rainbow wheel</span>
         <span></span>
         <button class="settingToggle" id="rainbowToggle" type="button">Off</button>
+      </div>
+      <div class="settingRow">
+        <span class="settingName">KRL glitch</span>
+        <span></span>
+        <button class="settingToggle" id="krlGlitchToggle" type="button">On</button>
+      </div>
+      <div class="settingRow">
+        <span class="settingName">KRL lock</span>
+        <span></span>
+        <button class="settingToggle" id="krlLockToggle" type="button">Off</button>
       </div>
       <div class="settingRow">
         <span class="settingName">Woods white glow</span>
@@ -640,12 +787,23 @@
         <button class="settingToggle" id="woodsWhiteToggle" type="button">Off</button>
       </div>
     </div>
+    <div id="sceneSection" class="menuDropdown">
+      <button id="sceneDropdownToggle" class="menuDropdownHead" type="button">
+        <span class="menuDropdownHeadText">
+          <span class="menuDropdownTitle">Scenes</span>
+          <span class="menuDropdownMeta" id="sceneDropdownMeta">All enabled</span>
+        </span>
+        <span class="menuDropdownCaret">▾</span>
+      </button>
+      <div class="menuDropdownBody">
+        <div id="sceneMenuList"></div>
+      </div>
+    </div>
     <div id="sceneMenuActions">
       <button class="sceneMenuBtn" id="sceneMenuAllOn" type="button">All On</button>
       <button class="sceneMenuBtn" id="sceneMenuCurated" type="button">Curated</button>
       <button class="sceneMenuBtn" id="sceneMenuClose" type="button">Close</button>
     </div>
-    <div id="sceneMenuList"></div>
   </div>
 
   <div id="help">
@@ -699,6 +857,7 @@
   uniform int   u_sceneB;
   uniform float u_blend;
   uniform float u_speed;                  // per-look motion speed
+  uniform float u_sceneFlow;
   uniform vec3  u_c0, u_c1, u_c2, u_c3;   // 4-stop colorway gradient with a full multicolor loop
 
   float hash21(vec2 p){ p = fract(p*vec2(123.34,345.45)); p += dot(p, p+34.345); return fract(p.x*p.y); }
@@ -725,15 +884,67 @@
   }
 
   vec3 sceneTunnel(vec2 uv, float t){
-    float a = atan(uv.y, uv.x);
-    float r = length(uv) + 1e-3;
-    float depth = 0.35/r + t*0.82;
-    float rings = sin(depth*10.0 - t)*0.5 + 0.5;
-    float spokes = sin(a*16.0 + depth*2.0)*0.5 + 0.5;
-    float pat = mix(rings, rings*spokes, 0.55);
-    vec3 col = palette(depth*0.05 + pat*0.5);
-    col *= smoothstep(0.02, 0.48, r);
-    col *= 0.46 + 0.58*rings;
+    vec2 p = uv;
+    float a = atan(p.y, p.x);
+    float r = length(p) + 1e-3;
+    float depth = 0.34/r + t*0.84;
+    float spin = a + t*0.18 + 0.12*sin(t*0.34);
+
+    float kaleido = abs(fract((spin / 6.28318) * 8.0 + 0.5) - 0.5) * 2.0;
+    float petals = 1.0 - smoothstep(0.18, 0.82, kaleido);
+    float orb = 0.5 + 0.5*sin(depth*8.8 - t*0.8 + petals*2.2);
+    float ringA = smoothstep(0.18, 0.0, abs(fract(depth*0.82 + petals*0.18) - 0.5));
+    float ringB = smoothstep(0.11, 0.0, abs(fract(depth*1.30 - petals*0.16 - t*0.06) - 0.5));
+    float iris = pow(max(0.0, cos(spin*6.0 + depth*0.22)), 8.0) * (0.34 + 0.66*orb);
+    float star = pow(max(0.0, cos(spin*12.0 - depth*0.10)), 18.0) * smoothstep(1.18, 0.06, r);
+    float core = smoothstep(0.20, 0.0, r);
+    float halo = smoothstep(1.04, 0.10, r) * (0.28 + 0.72*ringA);
+
+    vec3 col = palette(depth*0.050 + orb*0.18) * (0.16 + 0.12*orb);
+    col += palette(0.18 + depth*0.034 + petals*0.08) * ringA * 0.26;
+    col += palette(0.42 + depth*0.028 - orb*0.08) * ringB * 0.24;
+    col += palette(0.66 + petals*0.12 + orb*0.06) * iris * 0.30;
+    col += palette(0.86 + depth*0.020) * star * 0.18;
+    col += palette(0.98) * core * (0.18 + 0.16*orb);
+    col += palette(0.54 + orb*0.08) * halo * 0.14;
+    col *= smoothstep(0.02, 0.72, r);
+    return col;
+  }
+  vec3 sceneTunnelV2(vec2 uv, float t){
+    vec2 p = uv;
+    float r = length(p) + 1e-3;
+    float a = atan(p.y, p.x);
+
+    float spin = t*1.15 + 0.55*sin(t*0.42);
+    float twist = spin + 1.35/r + 0.26*sin(r*14.0 - t*2.0);
+    float rotA = a + twist;
+    float rotB = a - twist*0.62;
+    float depth = 0.30/r + t*1.05;
+
+    float ringA = smoothstep(0.18, 0.0, abs(sin(depth*2.26 - rotA)));
+    float ringB = smoothstep(0.12, 0.0, abs(sin(depth*3.46 + rotB)));
+    float ringC = smoothstep(0.08, 0.0, abs(fract(depth*1.78 - t*0.14) - 0.5));
+
+    float spokesA = pow(max(0.0, cos(rotA*8.0 + depth*0.62)), 10.0);
+    float spokesB = pow(max(0.0, cos(rotB*12.0 - depth*0.28)), 14.0);
+    float lane = max(spokesA*0.82, spokesB);
+
+    float swirl = 0.5 + 0.5*sin(depth*0.55 + a*5.0 - t*1.2);
+    float diamonds = smoothstep(0.16, 0.0, abs(sin((rotA + rotB)*2.0 + depth*1.12) * cos((rotA - rotB)*1.24 - depth*0.46)));
+    float flare = pow(max(0.0, cos(rotA*3.0 - t*1.7)), 22.0) * smoothstep(1.26, 0.04, r);
+    float core = smoothstep(0.18, 0.0, r);
+    float edgeSweep = pow(max(0.0, sin(r*18.0 - t*4.2 + a*4.0)), 12.0) * smoothstep(1.24, 0.16, r);
+
+    vec3 col = palette(depth*0.045 + swirl*0.24) * (0.12 + 0.10*swirl);
+    col += palette(0.18 + depth*0.032 + swirl*0.10) * ringA * 0.28;
+    col += palette(0.36 + depth*0.041 - swirl*0.08) * ringB * 0.26;
+    col += palette(0.54 + depth*0.050) * ringC * 0.24;
+    col += palette(0.72 + swirl*0.10) * lane * 0.36;
+    col += palette(0.86 + depth*0.024) * diamonds * lane * 0.24;
+    col += palette(0.96) * flare * 0.34;
+    col += palette(0.98) * core * (0.18 + 0.18*swirl);
+    col += palette(0.62 + swirl*0.08) * edgeSweep * 0.16;
+    col *= smoothstep(0.02, 0.98, r);
     return col;
   }
   vec3 sceneKaleido(vec2 uv, float t){
@@ -755,9 +966,13 @@
     vec2 r = vec2(fbm(p + 3.0*q + vec2(1.7,9.2) + 0.17*t),
                   fbm(p + 3.0*q + vec2(8.3,2.8) + 0.13*t));
     float w = fbm(p + 3.5*r + 0.07*t);
-    vec3 col = palette(0.9*w + 0.12*length(r) + 0.05*sin(t*0.15));
-    col *= 0.42 + 0.66*w;
-    col += palette(w + 0.3) * 0.13 * smoothstep(0.76, 1.0, w);  // restrained highlights
+    float pocket = smoothstep(0.44, 0.78, w + 0.10*length(r));
+    float filaments = smoothstep(0.10, 0.0, abs(fract((w + q.x*0.34 - q.y*0.28) * 3.2) - 0.5));
+    float core = smoothstep(0.70, 0.94, w);
+    vec3 col = palette(0.9*w + 0.12*length(r) + 0.05*sin(t*0.15)) * (0.06 + 0.18*w);
+    col += palette(0.24 + w*0.32 + q.x*0.08) * pocket * 0.28;
+    col += palette(0.52 + q.y*0.12 + w*0.18) * filaments * pocket * 0.22;
+    col += palette(w + 0.3) * 0.18 * core;
     return col;
   }
   vec3 sceneGrid(vec2 uv, float t){
@@ -795,35 +1010,46 @@
     return col;
   }
   vec3 sceneBars(vec2 uv, float t){
-    // neon spectrum: vertical light columns that bounce, bright caps + floor reflection
-    vec3 col = vec3(0.0);
-    const float N = 15.0;                                   // number of bars
-    const float y0 = -0.85;                                 // floor line
-    float u   = uv.x * 0.5 + 0.5;
-    float idx = floor(u * N);
-    float fx  = fract(u * N);
-    float seed = hash21(vec2(idx, 7.3));
-    // per-column animated level (two detuned sines + a little noise = lively spectrum)
-    float level = clamp(0.32
-                        + 0.40*sin(t*(1.6 + seed*2.4) + seed*9.0)
-                        + 0.20*sin(t*(0.6 + seed*1.1) + seed*4.0)
-                        + 0.16*(noise(vec2(idx*0.3, t*0.9)) - 0.5), 0.05, 1.0);
-    float top = y0 + 0.22 + 1.5*level;                      // top edge of the bar
-    vec3 bc = palette(0.08 + idx/N*0.70 + t*0.03);
-    // soft side edges -> a gap between columns
-    float side = smoothstep(0.07, 0.17, fx) * smoothstep(0.93, 0.83, fx);
-    // bar body, brighter toward its top
-    float body = side * smoothstep(0.0, 0.015, top - uv.y) * step(y0, uv.y);
-    float vgrad = 0.35 + 0.65 * clamp((uv.y - y0)/(top - y0 + 1e-3), 0.0, 1.0);
-    col += bc * body * vgrad * 0.95;
-    // bright cap riding the top of each bar
-    col += palette(0.95) * side * smoothstep(0.045, 0.0, abs(uv.y - top)) * 0.9;
-    // floor reflection (mirror about y0, fading downward)
-    float ry = 2.0*y0 - uv.y;
-    float refl = side * smoothstep(0.0, 0.015, top - ry) * smoothstep(y0, y0 - 0.55, uv.y);
-    col += bc * refl * 0.16;
-    // glowing floor strip
-    col += palette(0.88) * smoothstep(0.05, 0.0, abs(uv.y - y0)) * 0.18;
+    vec2 p = uv;
+    float haze = fbm(vec2(p.x*1.6 + t*0.08, p.y*2.2 - t*0.06));
+    float base = 0.08 + haze*0.06;
+
+    // Repeating rectangular gates moving toward the viewer.
+    float q = max(0.055, 0.98 - p.y);
+    float depth = 0.28 / q;
+    float z = depth + t*1.22;
+    float travel = fract(z);
+    float near = pow(1.0 - travel, 2.1);
+
+    float gateHalfW = mix(0.16, 1.05, near);
+    float gateHalfH = mix(0.08, 0.88, near);
+    float thick = mix(0.010, 0.080, near);
+
+    float gapW = mix(0.12, 0.34, near);
+    float leftFrame = smoothstep(thick, 0.0, abs(abs(p.x + gapW) - gateHalfW)) * smoothstep(gateHalfH, 0.0, abs(p.y));
+    float rightFrame = smoothstep(thick, 0.0, abs(abs(p.x - gapW) - gateHalfW)) * smoothstep(gateHalfH, 0.0, abs(p.y));
+    float topFrame = smoothstep(thick, 0.0, abs(abs(p.y) - gateHalfH)) * smoothstep(gateHalfW + gapW, gapW, abs(p.x));
+    float gate = max(max(leftFrame, rightFrame), topFrame);
+
+    // Stack additional inner shutter bars inside the gate for more motion.
+    float shutterY = abs(fract((p.y + near*0.22) * mix(4.0, 14.0, near) - t*0.36) - 0.5);
+    float shutter = smoothstep(0.10, 0.0, shutterY) * smoothstep(gateHalfW + gapW, gapW + 0.02, abs(p.x));
+    shutter *= smoothstep(gateHalfH, 0.0, abs(p.y));
+
+    // Side scanner rails and diagonal accents so it is not static.
+    float railA = smoothstep(0.018, 0.0, abs(abs(p.x) - (0.44 + 0.12*sin(t*1.0 + p.y*2.6))));
+    float railB = smoothstep(0.014, 0.0, abs(abs(p.x) - (0.76 + 0.10*cos(t*1.2 - p.y*1.8))));
+    float diag = smoothstep(0.024, 0.0, abs(p.x*0.72 + p.y*0.42 + 0.18*sin(t*1.4)));
+
+    float gateGlow = smoothstep(0.34, 0.92, gate + shutter*0.5);
+    float pulse = 0.5 + 0.5*sin(t*1.8 + near*4.0);
+
+    vec3 col = palette(base + p.y*0.03) * 0.08;
+    col += palette(0.18 + near*0.10 + pulse*0.06) * gate * 0.24;
+    col += palette(0.42 + near*0.12) * shutter * 0.24;
+    col += palette(0.72 + pulse*0.08) * (railA + railB) * 0.16;
+    col += palette(0.86 + near*0.06) * diag * gateGlow * 0.12;
+    col += palette(0.98) * gateGlow * 0.18;
     return col;
   }
   vec3 scenePrism(vec2 uv, float t){
@@ -937,6 +1163,130 @@
     col += palette(0.90 + detail*0.06) * (leftLight + rightLight) * 0.18;
     col += palette(0.68 + body*0.10) * (beamA + beamB) * beamMask * 0.22;
     col += palette(0.96) * max(leftLight, rightLight) * smoke * 0.12;
+    return col;
+  }
+  vec3 sceneLaserHaze(vec2 uv, float t){
+    vec2 p = uv;
+
+    // ---- sharper nightclub laser rig in the back ----
+    vec2 emitL = vec2(-0.84, -0.44 + 0.08*sin(t*0.74));
+    vec2 emitR = vec2( 0.84, -0.40 + 0.08*cos(t*0.68));
+    vec2 qL = p - emitL;
+    vec2 qR = p - emitR;
+    float aL = atan(qL.y, qL.x);
+    float aR = atan(qR.y, qR.x);
+    float pulse = 0.5 + 0.5*sin(t*2.4);
+
+    float fanL1 = pow(max(0.0, cos((aL + 0.86) * 16.0 - t*1.8)), 58.0);
+    float fanL2 = pow(max(0.0, cos((aL + 0.26) * 15.0 - t*1.5)), 52.0);
+    float fanR1 = pow(max(0.0, cos((aR - 0.88) * 16.0 + t*1.75)), 58.0);
+    float fanR2 = pow(max(0.0, cos((aR - 0.18) * 15.0 + t*1.42)), 52.0);
+    float scanA = smoothstep(0.016, 0.0, abs(p.x*0.74 + p.y*0.26 + 0.24*sin(t*1.3)));
+    float scanB = smoothstep(0.016, 0.0, abs(p.x*0.68 - p.y*0.32 - 0.22*cos(t*1.2)));
+    float scanC = smoothstep(0.014, 0.0, abs(p.x*0.12 + p.y*0.98 - 0.10*sin(t*0.9)));
+
+    float leftReach  = smoothstep(1.70, 0.10, length(qL));
+    float rightReach = smoothstep(1.70, 0.10, length(qR));
+    float fanLeft = (fanL1 + fanL2) * leftReach;
+    float fanRight = (fanR1 + fanR2) * rightReach;
+    float beamCore = max(max(fanLeft, fanRight), max(scanA, scanB) + scanC*0.9);
+    float beamGlow = smoothstep(0.12, 0.82, beamCore);
+    float hit = pow(max(fanLeft * fanRight + scanA * scanB, 0.0), 0.55);
+
+    vec3 laserCol = palette(0.08 + pulse*0.04) * 0.08;
+    laserCol += palette(0.18 + pulse*0.06) * fanLeft * 0.72;
+    laserCol += palette(0.52 + pulse*0.06) * fanRight * 0.70;
+    laserCol += palette(0.78 + pulse*0.04) * (scanA + scanB) * 0.52;
+    laserCol += palette(0.94) * scanC * 0.46;
+    laserCol += palette(0.98) * hit * (0.34 + pulse*0.22);
+    laserCol += palette(0.98) * beamGlow * 0.10;
+
+    // ---- smoke in front, with soft light carry from the lasers ----
+    vec2 sp = p * vec2(1.18, 1.42);
+    vec2 warpA = vec2(
+      fbm(sp*1.7 + vec2(t*0.11, -t*0.07)),
+      fbm(sp*1.6 + vec2(-t*0.09, t*0.08))
+    ) - 0.5;
+    vec2 warpB = vec2(
+      fbm(sp*3.0 - warpA*1.4 + vec2(t*0.16, t*0.05)),
+      fbm(sp.yx*2.8 + warpA*1.2 + vec2(-t*0.12, t*0.10))
+    ) - 0.5;
+    vec2 flow = sp + warpA*0.55 + warpB*0.24;
+
+    float body = fbm(flow*1.45 + vec2(0.0, -t*0.11));
+    float curl = fbm(flow*2.8 + vec2(t*0.20, -t*0.14));
+    float detail = fbm(flow*5.4 + vec2(-t*0.28, t*0.18));
+    float smoke = smoothstep(0.24, 0.90, body*0.74 + curl*0.34 - detail*0.10);
+    float rise = smoothstep(1.0, -0.62, uv.y);
+    float floorFog = smoothstep(0.24, -0.80, uv.y) * smoothstep(0.10, 0.84, body + curl*0.38);
+    float frontSmoke = smoke * (0.44 + 0.56*rise);
+    float occlusion = clamp(frontSmoke * (0.52 + 0.28*floorFog), 0.0, 0.78);
+
+    vec3 smokeCol = palette(0.08 + body*0.18 + uv.y*0.05) * 0.13;
+    smokeCol += palette(0.22 + curl*0.24 - t*0.015) * smoke * (0.26 + 0.28*rise);
+    smokeCol += palette(0.46 + body*0.18 + detail*0.10) * floorFog * 0.34;
+    smokeCol += palette(0.80 + pulse*0.05) * beamGlow * smoke * 0.22;
+    smokeCol += palette(0.96) * hit * smoke * 0.10;
+
+    vec3 col = laserCol * (1.0 - occlusion);
+    col += smokeCol;
+    col += palette(0.98) * beamGlow * smoke * 0.05;
+    return col;
+  }
+  vec3 sceneRaveLasers(vec2 uv, float t){
+    vec2 p = uv;
+    float haze = fbm(p*2.0 + vec2(t*0.10, -t*0.06));
+    float haze2 = fbm(p*4.0 + vec2(-t*0.08, t*0.05));
+    float roomHaze = smoothstep(-0.88, 0.78, p.y) * (0.22 + 0.36*haze);
+    float pulse = 0.5 + 0.5*sin(t*2.1);
+
+    vec3 col = palette(0.08 + haze*0.14 + p.y*0.04) * 0.08;
+
+    vec2 emit0 = vec2(-0.52, -0.76);
+    vec2 emit1 = vec2( 0.00, -0.80);
+    vec2 emit2 = vec2( 0.52, -0.76);
+
+    vec2 q0 = p - emit0;
+    vec2 q1 = p - emit1;
+    vec2 q2 = p - emit2;
+    float a0 = atan(q0.y, q0.x);
+    float a1 = atan(q1.y, q1.x);
+    float a2 = atan(q2.y, q2.x);
+    float m0 = smoothstep(2.00, 0.14, length(q0));
+    float m1 = smoothstep(2.10, 0.14, length(q1));
+    float m2 = smoothstep(2.00, 0.14, length(q2));
+
+    float fan0 = pow(max(0.0, cos((a0 + 0.94) * 18.0 - t*1.9)), 68.0);
+    float fan1 = pow(max(0.0, cos((a0 + 0.40) * 16.0 - t*1.5)), 54.0);
+    float fan2 = pow(max(0.0, cos((a1 + 0.00) * 22.0 + t*1.3)), 74.0);
+    float fan3 = pow(max(0.0, cos((a1 - 0.52) * 18.0 + t*1.8)), 60.0);
+    float fan4 = pow(max(0.0, cos((a2 - 0.96) * 18.0 + t*1.9)), 68.0);
+    float fan5 = pow(max(0.0, cos((a2 - 0.42) * 16.0 + t*1.5)), 54.0);
+
+    float beamsL = (fan0 + fan1) * m0;
+    float beamsC = (fan2 + fan3) * m1;
+    float beamsR = (fan4 + fan5) * m2;
+
+    float crossA = smoothstep(0.014, 0.0, abs(p.x*0.82 + p.y*0.30 + 0.22*sin(t*1.2)));
+    float crossB = smoothstep(0.014, 0.0, abs(p.x*0.76 - p.y*0.28 - 0.24*cos(t*1.1)));
+    float ceiling = smoothstep(0.012, 0.0, abs(p.y - (0.22 + 0.14*sin(t*0.9 + p.x*1.8))));
+    float geo = smoothstep(0.018, 0.0, abs(fract((p.x + p.y*0.42)*6.0 - t*0.22) - 0.5)) * smoothstep(-0.12, 0.88, p.y);
+
+    float intersect = pow(max(beamsL*beamsC + beamsC*beamsR + crossA*crossB, 0.0), 0.60);
+    float hazeMask = smoothstep(0.18, 0.92, roomHaze + haze2*0.18);
+
+    col += palette(0.18 + pulse*0.06) * beamsL * (0.34 + 0.20*hazeMask);
+    col += palette(0.46 + pulse*0.06) * beamsC * (0.38 + 0.22*hazeMask);
+    col += palette(0.74 + pulse*0.06) * beamsR * (0.34 + 0.20*hazeMask);
+    col += palette(0.86 + haze*0.06) * (crossA + crossB) * 0.26;
+    col += palette(0.96) * ceiling * 0.18;
+    col += palette(0.62 + haze2*0.08) * geo * 0.14;
+    col += palette(0.98) * intersect * (0.22 + 0.26*pulse);
+    col += palette(0.90) * (beamsL + beamsC + beamsR + crossA + crossB) * hazeMask * 0.06;
+
+    // Soft audience silhouette so the view feels like you're in the crowd.
+    float crowd = smoothstep(0.16, 0.0, abs(fract((p.x + 1.4)*3.4) - 0.5)) * smoothstep(-0.56, -0.92, p.y);
+    col *= 1.0 - crowd*0.22;
     return col;
   }
   vec3 sceneAurora(vec2 uv, float t){
@@ -1094,7 +1444,105 @@
     col += palette(ph + 0.5) * line * 0.5;                 // crisp contour lines
     return col;
   }
-  vec3 getScene(int s, vec2 uv, float t){
+  bool isFlowFamily(int s){ return s >= 12 && s <= 14; }
+  void flowFamilyPreset(int s, out vec4 a, out vec4 b, out vec4 c){
+    if(s == 12){
+      a = vec4(1.15, 10.0, 11.0, 8.5);
+      b = vec4(0.00, 0.00, 0.00, 0.00);
+      c = vec4(0.72, 0.98, 0.080, 0.050);
+      return;
+    }
+    if(s == 13){
+      a = vec4(1.00, 8.4, 9.7, 7.6);
+      b = vec4(0.08, 0.00, 1.00, 0.16);
+      c = vec4(0.68, 0.95, 0.092, 0.058);
+      return;
+    }
+    if(s == 14){
+      a = vec4(1.15, 10.0, 11.0, 8.5);
+      b = vec4(0.00, 0.00, 0.08, 0.40);
+      c = vec4(0.62, 0.94, 0.075, 0.050);
+      return;
+    }
+    if(s == 15){
+      a = vec4(1.15, 9.0, 9.0, 7.2);
+      b = vec4(0.00, 1.00, 0.00, 0.06);
+      c = vec4(0.60, 0.92, 0.085, 0.055);
+      return;
+    }
+    if(s == 16){
+      a = vec4(1.20, 9.0, 9.5, 7.0);
+      b = vec4(0.20, 0.00, 0.00, 0.10);
+      c = vec4(0.64, 0.93, 0.085, 0.050);
+      return;
+    }
+    a = vec4(1.40, 4.0, 4.0, 6.8);
+    b = vec4(0.00, 0.00, 0.00, 1.00);
+    c = vec4(0.58, 0.90, 0.060, 0.040);
+  }
+  vec3 sceneFlowMorph(vec2 uv, float t, vec4 a, vec4 b, vec4 c){
+    vec2 p = uv * a.x;
+    if(b.x > 0.001){
+      p += b.x * vec2(sin(p.y*3.0 + t*0.40), cos(p.x*3.0 - t*0.30));
+    }
+
+    float waveA = sin(p.x*a.y + sin(p.y*2.4 - t*(0.72 + b.x*0.7))*2.0 - t*(2.0 + b.z*0.28));
+    float waveB = sin(p.y*a.z + cos(p.x*2.1 + t*(0.56 + b.w*0.18))*2.2 + t*(1.82 + b.x*0.5));
+    float waveC = sin((p.x + p.y*0.78)*a.w - t*(2.34 + b.z*0.18));
+    float field = waveA + waveB + waveC;
+
+    float radial = 0.0;
+    if(b.y > 0.001){
+      for(int i=0;i<3;i++){
+        float fi = float(i);
+        vec2 src = 0.86 * vec2(sin(t*0.30 + fi*1.8), cos(t*0.24 + fi*2.0));
+        radial += sin(length(p - src)*mix(10.0, 14.5, b.y) - t*2.0 + fi*1.2);
+      }
+      field = mix(field, field + radial*0.34, b.y);
+    }
+
+    float moire = 0.5 + 0.5*sin(field * mix(2.0, 2.25, b.w));
+    float lineA = smoothstep(c.z, 0.0, abs(fract(field*0.82) - 0.5));
+    float lineB = smoothstep(c.w, 0.0, abs(fract(field*1.58 + 0.28) - 0.5));
+    float lineC = smoothstep(max(c.w*0.78, 0.028), 0.0, abs(fract(field*2.22 + 0.10) - 0.5));
+    float lines = max(lineA * (0.34 + 0.66*lineB), lineC * (0.32 + b.w*0.30));
+    float maskCore = smoothstep(c.x, c.y, moire);
+    float verticalMask = smoothstep(-0.92, 0.56, p.y);
+    float mask = mix(0.34, 1.0, maskCore) * mix(0.46, 1.0, verticalMask);
+
+    float xCells = (p.x + 2.45) * mix(6.0, 6.8, clamp(b.z, 0.0, 1.0));
+    float xCenter = abs(fract(xCells) - 0.5);
+    float travel = fract(t*0.20 + floor(xCells) * 0.117);
+    float near = pow(1.0 - travel, 2.3);
+    float colWidth = mix(0.010, 0.10, near);
+    float column = smoothstep(colWidth, 0.0, xCenter);
+    float columnMask = smoothstep(0.74, 0.96, 1.0 - moire);
+    float columnLight = column * columnMask * smoothstep(0.02, 0.16, travel) * smoothstep(1.0, 0.70, travel) * smoothstep(-0.92, 0.56, p.y) * b.z;
+
+    float rung = smoothstep(0.08, 0.0, abs(fract((p.y + near*0.48) * mix(2.2, 12.0, near) - t*0.34) - 0.5)) * columnLight;
+    float dust = fbm(vec2(p.x*1.6 + t*0.06, p.y*2.1 - t*0.11));
+
+    float contourField = 0.0;
+    float contourLine = 0.0;
+    if(b.w > 0.001){
+      contourField = fbm(p*1.3 + vec2(t*0.08, -t*0.05));
+      contourField += 0.5 * fbm(p*2.7 - vec2(t*0.04, t*0.06));
+      contourField += 0.18 * sin(p.x*4.0 + t*0.3) * sin(p.y*4.0 - t*0.2);
+      contourLine = smoothstep(0.06, 0.0, abs(fract(contourField*mix(7.0, 9.0, b.w)) - 0.5)) * b.w;
+    }
+
+    float lineBed = lineA * (0.42 + 0.30*lineB) + lineC * 0.26;
+    vec3 col = palette(0.10 + dust*0.04 + moire*0.05 + contourField*0.10*b.w) * (0.24 + 0.08*b.w);
+    col += palette(0.22 + moire*0.08 + waveA*0.04) * lineBed * (0.22 + 0.14*verticalMask);
+    col += palette(0.32 + waveA*0.05 + waveB*0.04) * lines * mask * (0.42 + 0.16*b.x + 0.14*b.w);
+    col += palette(0.56 + waveC*0.05 + near*0.08) * columnLight * 0.30;
+    col += palette(0.74 + moire*0.06 + contourField*0.12*b.w) * (rung * 0.72 + contourLine * 0.46);
+    col += palette(0.92 + dust*0.04) * contourLine * 0.22;
+    col += palette(0.98) * columnLight * (0.08 + 0.10*near);
+    col *= 1.12;
+    return col;
+  }
+  vec3 getSceneBase(int s, vec2 uv, float t){
     if(s==0) return sceneTunnel(uv,t);
     if(s==1) return sceneKaleido(uv,t);
     if(s==2) return scenePlasma(uv,t);
@@ -1105,21 +1553,41 @@
     if(s==7) return scenePulse(uv,t);
     if(s==8) return sceneLasers(uv,t);
     if(s==9) return sceneSmoke(uv,t);
-    if(s==10) return sceneAurora(uv,t);
-    if(s==11) return sceneInterference(uv,t);
-    if(s==12) return scenePhase(uv,t);
-    if(s==13) return sceneLattice(uv,t);
-    if(s==14) return sceneRipple(uv,t);
-    if(s==15) return sceneWarp(uv,t);
-    return sceneContour(uv,t);
+    if(s==10) return sceneLaserHaze(uv,t);
+    if(s==11) return sceneAurora(uv,t);
+    if(s==12) return sceneInterference(uv,t);
+    if(s==13) return scenePhase(uv,t);
+    if(s==14) return sceneLattice(uv,t);
+    if(s==15) return sceneRipple(uv,t);
+    if(s==16) return sceneWarp(uv,t);
+    if(s==17) return sceneContour(uv,t);
+    if(s==18) return sceneTunnelV2(uv,t);
+    return sceneRaveLasers(uv,t);
+  }
+  vec3 getScene(int s, vec2 uv, float t){
+    return getSceneBase(s, uv, t);
   }
 
   void main(){
     vec2 uv = (gl_FragCoord.xy*2.0 - u_res) / u_res.y;
     float t = u_time * u_speed;              // motion speed is set per-look
     uv *= (1.0 - 0.012*u_energy);            // barely-there breathing, not an in/out pump
-    vec3 col = getScene(u_sceneA, uv, t);
-    if(u_blend > 0.002){ col = mix(col, getScene(u_sceneB, uv, t), u_blend); }  // 2nd scene only during a crossfade
+    vec3 col;
+    if(u_sceneFlow > 0.5 && u_blend > 0.002 && isFlowFamily(u_sceneA) && isFlowFamily(u_sceneB)){
+      vec4 a0, b0, c0, a1, b1, c1;
+      flowFamilyPreset(u_sceneA, a0, b0, c0);
+      flowFamilyPreset(u_sceneB, a1, b1, c1);
+      vec3 flowCol = sceneFlowMorph(uv, t, mix(a0, a1, u_blend), mix(b0, b1, u_blend), mix(c0, c1, u_blend));
+      vec3 fromCol = getSceneBase(u_sceneA, uv, t);
+      vec3 toCol = getSceneBase(u_sceneB, uv, t);
+      float enterFlow = smoothstep(0.08, 0.24, u_blend);
+      float exitFlow = smoothstep(0.76, 0.97, u_blend);
+      col = mix(fromCol, flowCol, enterFlow);
+      col = mix(col, toCol, exitFlow);
+    }else{
+      col = getScene(u_sceneA, uv, t);
+      if(u_blend > 0.002){ col = mix(col, getScene(u_sceneB, uv, t), u_blend); }  // 2nd scene only during a crossfade
+    }
     col = neonGrade(col);
     col *= 0.96 + 0.18*u_energy;             // brighter neon mids without full-screen white
     fragColor = vec4(max(col, 0.0), 1.0);
@@ -1440,7 +1908,7 @@
   let PAL_DWELL = 42.0; // seconds each colorway holds before next (user-adjustable)
   let nextPalAt = PAL_DWELL;
   let autoPalette = true;
-  let paletteSubset = null;   // a look can pin a cohesive set of colorways
+  const paletteEnabled = PALETTES.map(() => true);
   let rainbowMode = false;    // continuous full-spectrum hue rotation instead of fixed colorways
   let shuffleMode = false;    // pick the next scene & colorway at random from the selected sets
 
@@ -1450,15 +1918,13 @@
   function startPaletteTween(idx){
     palFrom = { c0:[...cur.c0], c1:[...cur.c1], c2:[...cur.c2], c3:[...cur.c3] };
     if(idx == null){
-      const pool = (paletteSubset && paletteSubset.length) ? paletteSubset : PALETTES.map((_, i) => i);
+      const pool = getEnabledPalettes();
       if(shuffleMode && pool.length > 1){
         let n; do { n = pool[Math.floor(Math.random()*pool.length)]; } while(n === palToIdx);
         palToIdx = n;
-      }else if(paletteSubset && paletteSubset.length){
-        const pos = paletteSubset.indexOf(palToIdx);
-        palToIdx = paletteSubset[(pos >= 0 ? pos + 1 : 0) % paletteSubset.length];
       }else{
-        palToIdx = (palToIdx + 1) % PALETTES.length;
+        const pos = pool.indexOf(palToIdx);
+        palToIdx = pool[(pos >= 0 ? pos + 1 : 0) % pool.length];
       }
     }else{
       palToIdx = idx;
@@ -1490,10 +1956,17 @@
   /* ============================================================
      SCENES (crossfade in-shader, no hard cuts)
      ============================================================ */
-  const SCENE_NAMES = ['tunnel','kaleido','plasma','grid','bars','prism','ribbons','pulse','lasers','smoke','aurora','interference','phase','lattice','ripple','warp','contour'];
-  const CURATED_LOOP_ORDER = [2, 8, 10, 6, 11, 12, 13, 14, 15, 16, 4, 1, 7, 5, 3, 9, 0];
-  const CURATED_LOOP_SELECTION = [2, 8, 10, 6, 11, 12, 13, 14, 15, 4, 7, 5];
+  const SCENE_NAMES = ['tunnel','kaleido','plasma','grid','bars','prism','ribbons','pulse','lasers','smoke','laser haze','aurora','interference','phase','lattice','ripple','warp','contour','tunnel v2','rave lasers'];
+  const CURATED_LOOP_ORDER = [19, 18, 2, 8, 11, 6, 12, 13, 14, 15, 16, 17, 4, 1, 7, 5, 3, 9, 0];
+  const CURATED_LOOP_SELECTION = [19, 18, 2, 8, 11, 6, 12, 13, 14, 15, 16, 4, 7, 5];
   const sceneLoopEnabled = SCENE_NAMES.map(() => true);
+  const paletteDropdownToggle = document.getElementById('paletteDropdownToggle');
+  const paletteDropdownMeta = document.getElementById('paletteDropdownMeta');
+  const paletteAllOn = document.getElementById('paletteAllOn');
+  const sceneSection = document.getElementById('sceneSection');
+  const sceneDropdownToggle = document.getElementById('sceneDropdownToggle');
+  const sceneDropdownMeta = document.getElementById('sceneDropdownMeta');
+  const paletteSection = document.getElementById('paletteSection');
   const sceneMenuToggle = document.getElementById('sceneMenuToggle');
   const sceneMenuPanel = document.getElementById('sceneMenuPanel');
   const sceneMenuList = document.getElementById('sceneMenuList');
@@ -1502,6 +1975,8 @@
   const sceneMenuCurated = document.getElementById('sceneMenuCurated');
   const sceneMenuClose = document.getElementById('sceneMenuClose');
   let sceneMenuOpen = false;
+  let paletteSectionOpen = false;
+  let sceneSectionOpen = false;
   let sceneA = 2, sceneB = 2, blend = 0, blendEased = 0;   // start on plasma
   let transitioning = false, transStart = 0;
   let TRANS_DUR = 3.2;     // long, silky crossfade (set per-look)
@@ -1517,6 +1992,7 @@
     writeSavedState({
       look: currentLook,
       palette: palToIdx,
+      paletteEnabled: [...paletteEnabled],
       scene: getCurrentSceneIndex(),
       sceneLoopEnabled: [...sceneLoopEnabled],
       userSceneDwell,
@@ -1525,6 +2001,10 @@
       shuffleMode,
       rainbowMode,
       sceneLocked,
+      velocityTransitionEnabled,
+      sceneFlowEnabled,
+      krlGlitchEnabled,
+      krlLockEnabled,
       woodsWhiteMode
     });
   }
@@ -1532,6 +2012,28 @@
   function setSceneMenuOpen(open){
     sceneMenuOpen = open;
     sceneMenuPanel.classList.toggle('open', open);
+  }
+  function setDropdownOpen(el, open){
+    if(!el) return;
+    el.classList.toggle('open', open);
+  }
+  function getEnabledPalettes(){
+    const enabled = [];
+    for(let i=0;i<paletteEnabled.length;i++){
+      if(paletteEnabled[i]) enabled.push(i);
+    }
+    if(!enabled.length) enabled.push(palToIdx);
+    return enabled;
+  }
+  function syncDropdownMeta(){
+    if(sceneDropdownMeta){
+      const count = sceneLoopEnabled.filter(Boolean).length;
+      sceneDropdownMeta.textContent = count === SCENE_NAMES.length ? 'All enabled' : `${count} enabled`;
+    }
+    if(paletteDropdownMeta){
+      const count = paletteEnabled.filter(Boolean).length;
+      paletteDropdownMeta.textContent = count === PALETTES.length ? 'All enabled' : `${count} enabled`;
+    }
   }
   function getLoopScenes(){
     return CURATED_LOOP_ORDER.filter(idx => sceneLoopEnabled[idx]);
@@ -1541,6 +2043,7 @@
     indices.forEach(idx => { if(idx >= 0 && idx < sceneLoopEnabled.length) sceneLoopEnabled[idx] = true; });
     if(!sceneLoopEnabled.some(Boolean)) sceneLoopEnabled[2] = true;
     renderSceneMenu();
+    syncDropdownMeta();
     persistUiState();
   }
   function toggleSceneInLoop(idx){
@@ -1551,8 +2054,35 @@
     }
     sceneLoopEnabled[idx] = !sceneLoopEnabled[idx];
     renderSceneMenu();
+    syncDropdownMeta();
     persistUiState();
     toast(`loop · ${sceneLoopEnabled[idx] ? 'add ' : 'remove '}${SCENE_NAMES[idx]}`);
+  }
+  function setPaletteEnabled(indices){
+    paletteEnabled.fill(false);
+    indices.forEach(idx => { if(idx >= 0 && idx < paletteEnabled.length) paletteEnabled[idx] = true; });
+    if(!paletteEnabled.some(Boolean)) paletteEnabled[palToIdx] = true;
+    renderPaletteGrid();
+    syncDropdownMeta();
+    persistUiState();
+  }
+  function togglePaletteInLoop(idx){
+    const activeCount = paletteEnabled.filter(Boolean).length;
+    if(paletteEnabled[idx] && activeCount <= 1){
+      toast('colorways · keep one');
+      return;
+    }
+    paletteEnabled[idx] = !paletteEnabled[idx];
+    if(!paletteEnabled[palToIdx]){
+      const nextEnabled = getEnabledPalettes()[0];
+      startPaletteTween(nextEnabled);
+      nextPalAt = clock + PAL_DWELL;
+    }else{
+      renderPaletteGrid();
+      syncDropdownMeta();
+      persistUiState();
+    }
+    toast(`colorways · ${paletteEnabled[idx] ? 'add ' : 'remove '}${PALETTES[idx].name}`);
   }
   function renderSceneMenu(){
     sceneMenuList.innerHTML = '';
@@ -1562,29 +2092,39 @@
 
       const preview = document.createElement('button');
       preview.type = 'button';
-      preview.className = 'scenePreview' + ((transitioning ? sceneB : sceneA) === i ? ' current' : '');
+      preview.className = 'scenePreview'
+        + ((transitioning ? sceneB : sceneA) === i ? ' current' : '')
+        + (sceneLoopEnabled[i] ? ' inLoop' : '');
       preview.dataset.preview = String(i);
-      preview.innerHTML = `<span class="scenePreviewLabel">${SCENE_NAMES[i]}</span><span class="scenePreviewSub">scene ${i+1}</span>`;
+      preview.innerHTML = `<span class="scenePreviewText"><span class="scenePreviewLabel">${SCENE_NAMES[i]}</span><span class="scenePreviewSub">scene ${i+1}</span></span><span class="scenePreviewState">${sceneLoopEnabled[i] ? 'selected' : 'off'}</span>`;
 
       const toggle = document.createElement('button');
       toggle.type = 'button';
-      toggle.className = 'sceneLoopToggle' + (sceneLoopEnabled[i] ? ' active' : '');
-      toggle.dataset.toggle = String(i);
-      toggle.textContent = sceneLoopEnabled[i] ? 'In Loop' : 'Muted';
+      toggle.className = 'sceneCheck' + (sceneLoopEnabled[i] ? ' active' : '');
+      toggle.dataset.check = String(i);
+      toggle.setAttribute('aria-label', sceneLoopEnabled[i] ? `Remove ${SCENE_NAMES[i]} from loop` : `Add ${SCENE_NAMES[i]} to loop`);
+      toggle.textContent = sceneLoopEnabled[i] ? '✓' : '';
 
       row.appendChild(preview);
       row.appendChild(toggle);
       sceneMenuList.appendChild(row);
     }
+    syncDropdownMeta();
   }
   function renderPaletteGrid(){
     if(!paletteGrid) return;
     paletteGrid.innerHTML = '';
     PALETTES.forEach((P, i) => {
+      const row = document.createElement('div');
+      row.className = 'paletteRow';
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'paletteBtn' + ((palToIdx === i && !rainbowMode) ? ' active' : '');
+      btn.className = 'paletteBtn'
+        + ((palToIdx === i && !rainbowMode) ? ' active' : '')
+        + (paletteEnabled[i] ? ' enabled' : '');
       btn.dataset.palette = String(i);
+      const info = document.createElement('span');
+      info.className = 'paletteInfo';
       const swatch = document.createElement('span');
       swatch.className = 'paletteSwatch';
       swatch.style.background = `linear-gradient(90deg,
@@ -1595,16 +2135,53 @@
       const name = document.createElement('span');
       name.className = 'paletteName';
       name.textContent = P.name;
-      btn.appendChild(swatch);
-      btn.appendChild(name);
-      paletteGrid.appendChild(btn);
+      const state = document.createElement('span');
+      state.className = 'paletteState';
+      state.textContent = paletteEnabled[i] ? 'selected' : 'off';
+      info.appendChild(swatch);
+      info.appendChild(name);
+      btn.appendChild(info);
+      btn.appendChild(state);
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'paletteCheck' + (paletteEnabled[i] ? ' active' : '');
+      toggle.dataset.paletteCheck = String(i);
+      toggle.setAttribute('aria-label', paletteEnabled[i] ? `Remove ${P.name} from colorway loop` : `Add ${P.name} to colorway loop`);
+      toggle.textContent = paletteEnabled[i] ? '✓' : '';
+      row.appendChild(btn);
+      row.appendChild(toggle);
+      paletteGrid.appendChild(row);
     });
+    syncDropdownMeta();
   }
   sceneMenuToggle.addEventListener('click', () => setSceneMenuOpen(!sceneMenuOpen));
   sceneMenuClose.addEventListener('click', () => setSceneMenuOpen(false));
+  if(paletteDropdownToggle){
+    paletteDropdownToggle.addEventListener('click', () => {
+      paletteSectionOpen = !paletteSectionOpen;
+      setDropdownOpen(paletteSection, paletteSectionOpen);
+    });
+  }
+  if(sceneDropdownToggle){
+    sceneDropdownToggle.addEventListener('click', () => {
+      sceneSectionOpen = !sceneSectionOpen;
+      setDropdownOpen(sceneSection, sceneSectionOpen);
+    });
+  }
+  if(paletteAllOn){
+    paletteAllOn.addEventListener('click', () => {
+      paletteEnabled.fill(true);
+      renderPaletteGrid();
+      syncDropdownMeta();
+      persistUiState();
+      toast('colorways · all on');
+    });
+  }
   sceneMenuAllOn.addEventListener('click', () => {
     sceneLoopEnabled.fill(true);
     renderSceneMenu();
+    syncDropdownMeta();
+    persistUiState();
     toast('loop · all scenes');
   });
   sceneMenuCurated.addEventListener('click', () => {
@@ -1622,7 +2199,15 @@
   const rainbowToggle      = document.getElementById('rainbowToggle');
   const shuffleToggle      = document.getElementById('shuffleToggle');
   const sceneLockToggle    = document.getElementById('sceneLockToggle');
+  const velocityTransitionToggle = document.getElementById('velocityTransitionToggle');
+  const sceneFlowToggle    = document.getElementById('sceneFlowToggle');
+  const krlGlitchToggle    = document.getElementById('krlGlitchToggle');
+  const krlLockToggle      = document.getElementById('krlLockToggle');
   const woodsWhiteToggle   = document.getElementById('woodsWhiteToggle');
+  let velocityTransitionEnabled = false;
+  let sceneFlowEnabled = false;
+  let krlGlitchEnabled = true;
+  let krlLockEnabled = false;
   let woodsWhiteMode = false;
   function syncSceneIntervalUI(){
     if(!sceneIntervalRange) return;
@@ -1679,6 +2264,39 @@
       persistUiState();
       toast('scene lock · ' + (sceneLocked ? 'on' : 'off'));
     });
+    velocityTransitionToggle.addEventListener('click', () => {
+      velocityTransitionEnabled = !velocityTransitionEnabled;
+      velocityTransitionToggle.classList.toggle('active', velocityTransitionEnabled);
+      velocityTransitionToggle.textContent = velocityTransitionEnabled ? 'On' : 'Off';
+      persistUiState();
+      toast('velocity transition · ' + (velocityTransitionEnabled ? 'on' : 'off'));
+    });
+    sceneFlowToggle.addEventListener('click', () => {
+      sceneFlowEnabled = !sceneFlowEnabled;
+      sceneFlowToggle.classList.toggle('active', sceneFlowEnabled);
+      sceneFlowToggle.textContent = sceneFlowEnabled ? 'On' : 'Off';
+      persistUiState();
+      toast('scene flow · ' + (sceneFlowEnabled ? 'on' : 'off'));
+    });
+    krlGlitchToggle.addEventListener('click', () => {
+      krlGlitchEnabled = !krlGlitchEnabled;
+      krlGlitchToggle.classList.toggle('active', krlGlitchEnabled);
+      krlGlitchToggle.textContent = krlGlitchEnabled ? 'On' : 'Off';
+      logoInner.classList.remove('glitch');
+      clearTimeout(glitchTimer);
+      glitchTimer = null;
+      if(krlGlitchEnabled) scheduleGlitch();
+      persistUiState();
+      toast('krl glitch · ' + (krlGlitchEnabled ? 'on' : 'off'));
+    });
+    krlLockToggle.addEventListener('click', () => {
+      krlLockEnabled = !krlLockEnabled;
+      krlLockToggle.classList.toggle('active', krlLockEnabled);
+      krlLockToggle.textContent = krlLockEnabled ? 'On' : 'Off';
+      if(krlLockEnabled) setLogo(true);
+      persistUiState();
+      toast('krl lock · ' + (krlLockEnabled ? 'on' : 'off'));
+    });
     woodsWhiteToggle.addEventListener('click', () => {
       woodsWhiteMode = !woodsWhiteMode;
       woodsWhiteToggle.classList.toggle('active', woodsWhiteMode);
@@ -1690,6 +2308,11 @@
   }
   if(paletteGrid){
     paletteGrid.addEventListener('click', (e) => {
+      const toggleBtn = e.target.closest('[data-palette-check]');
+      if(toggleBtn){
+        togglePaletteInLoop(Number(toggleBtn.dataset.paletteCheck));
+        return;
+      }
       const btn = e.target.closest('[data-palette]');
       if(!btn) return;
       const idx = Number(btn.dataset.palette);
@@ -1712,9 +2335,9 @@
       renderSceneMenu();
       return;
     }
-    const toggleBtn = e.target.closest('[data-toggle]');
+    const toggleBtn = e.target.closest('[data-check]');
     if(toggleBtn){
-      toggleSceneInLoop(Number(toggleBtn.dataset.toggle));
+      toggleSceneInLoop(Number(toggleBtn.dataset.check));
     }
   });
   document.addEventListener('pointerdown', (e) => {
@@ -1724,6 +2347,8 @@
   });
   renderSceneMenu();
   renderPaletteGrid();
+  setDropdownOpen(paletteSection, paletteSectionOpen);
+  setDropdownOpen(sceneSection, sceneSectionOpen);
 
   function gotoScene(idx){
     if(idx === sceneA || transitioning) return;   // ignore overlap → always smooth
@@ -1776,22 +2401,22 @@
      ============================================================ */
   const LOOKS = [
     // soft flowing neon (the dreamy stuff Karl likes) — gentle, bloomy, no edge/posterize
-    { name:'FLOW',    scenes:[2,10,9,6,11,12,13,14,15,16,7], dwell:24, trans:3.4, palettes:[4,7,0,11,5],
+    { name:'FLOW',    scenes:[18,2,11,9,6,12,13,14,15,16,17,7], dwell:24, trans:3.4, palettes:[4,7,0,11,5],
       post:{ sharp:0.34, bloom:0.64, sat:1.34, contrast:1.05, black:0.00, bands:0, edge:0.00, ca:1.0, vig:1.00, strobe:0.00, grit:0.18, speed:0.60 } },
     // James Hype — sharp, punchy, fast cuts, light outline, mild strobe
-    { name:'KINETIC', scenes:[4,8,3,5,11],    dwell:12, trans:1.8, palettes:[0,4,1,13],
+    { name:'KINETIC', scenes:[19,4,8,3,5,12],    dwell:12, trans:1.8, palettes:[0,4,1,13],
       post:{ sharp:0.85, bloom:0.42, sat:1.16, contrast:1.22, black:0.06, bands:0, edge:0.55, ca:1.1, vig:1.05, strobe:0.22, grit:0.14, speed:0.94 } },
     // Mau P techno — dark, hypnotic, slow, posterized, crushed blacks, no grit
-    { name:'MINIMAL', scenes:[5,11,12,1,0],   dwell:32, trans:3.0, palettes:[12,4,7,13],
+    { name:'MINIMAL', scenes:[5,12,13,1,0],   dwell:32, trans:3.0, palettes:[12,4,7,13],
       post:{ sharp:0.60, bloom:0.30, sat:0.92, contrast:1.30, black:0.12, bands:5, edge:0.32, ca:0.6, vig:1.20, strobe:0.00, grit:0.00, speed:0.42 } },
     // Guetta festival — saturated, bloomy, energetic, strobe on peaks
-    { name:'RAVE',    scenes:[0,2,8,7,10,6],  dwell:16, trans:2.4, palettes:[1,8,0,10,6],
+    { name:'RAVE',    scenes:[19,0,18,2,8,7,11,6],  dwell:16, trans:2.4, palettes:[1,8,0,10,6],
       post:{ sharp:0.45, bloom:0.88, sat:1.50, contrast:1.10, black:0.02, bands:0, edge:0.00, ca:1.3, vig:0.90, strobe:0.32, grit:0.18, speed:0.82 } },
     // Skrillex — gritty, glitchy, heavy RGB split, posterize, scanlines
-    { name:'GRIT',    scenes:[4,9,11,12,5],   dwell:14, trans:1.6, palettes:[2,9,5,1],
+    { name:'GRIT',    scenes:[4,9,12,13,5],   dwell:14, trans:1.6, palettes:[2,9,5,1],
       post:{ sharp:0.70, bloom:0.40, sat:1.12, contrast:1.26, black:0.10, bands:6, edge:0.50, ca:2.4, vig:1.10, strobe:0.40, grit:0.85, speed:0.74 } },
     // graphic ink / line-art — maximum sharp, strong outline + posterize, low sat
-    { name:'INK',     scenes:[5,11,12,3,4,1], dwell:18, trans:2.2, palettes:[12,0,4],
+    { name:'INK',     scenes:[5,12,13,3,4,1], dwell:18, trans:2.2, palettes:[12,0,4],
       post:{ sharp:1.00, bloom:0.26, sat:0.55, contrast:1.42, black:0.14, bands:4, edge:1.00, ca:0.8, vig:1.15, strobe:0.14, grit:0.30, speed:0.58 } },
   ];
   const post   = { ...LOOKS[0].post };   // live (lerped) post params
@@ -1820,12 +2445,13 @@
     SCENE_DWELL = (userSceneDwell != null) ? userSceneDwell : L.dwell;
     if(userSceneDwell == null) syncSceneIntervalUI();   // reflect the look's pace on the slider
     TRANS_DUR = L.trans;
-    paletteSubset = (L.palettes && L.palettes.length) ? L.palettes : null;
     if(snap){                       // boot only — set up the initial scene selection
       setLoopEnabled(L.scenes);
       gotoScene(L.scenes[0]);
     }                               // a manual style switch keeps the user's selected scenes & current scene
-    if(paletteSubset) startPaletteTween(paletteSubset[0]);
+    if(snap && L.palettes && L.palettes.length && paletteEnabled[L.palettes[0]]){
+      startPaletteTween(L.palettes[0]);
+    }
     nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL;
     renderLookRow();
     persistUiState();
@@ -1874,6 +2500,10 @@
     shuffleMode = !!savedState.shuffleMode;
     rainbowMode = !!savedState.rainbowMode;
     sceneLocked = !!savedState.sceneLocked;
+    velocityTransitionEnabled = !!savedState.velocityTransitionEnabled;
+    sceneFlowEnabled = !!savedState.sceneFlowEnabled;
+    krlGlitchEnabled = savedState.krlGlitchEnabled !== false;
+    krlLockEnabled = !!savedState.krlLockEnabled;
     woodsWhiteMode = !!savedState.woodsWhiteMode;
     if(shuffleToggle){
       shuffleToggle.classList.toggle('active', shuffleMode);
@@ -1887,9 +2517,34 @@
       sceneLockToggle.classList.toggle('active', sceneLocked);
       sceneLockToggle.textContent = sceneLocked ? 'On' : 'Off';
     }
+    if(velocityTransitionToggle){
+      velocityTransitionToggle.classList.toggle('active', velocityTransitionEnabled);
+      velocityTransitionToggle.textContent = velocityTransitionEnabled ? 'On' : 'Off';
+    }
+    if(sceneFlowToggle){
+      sceneFlowToggle.classList.toggle('active', sceneFlowEnabled);
+      sceneFlowToggle.textContent = sceneFlowEnabled ? 'On' : 'Off';
+    }
+    if(krlGlitchToggle){
+      krlGlitchToggle.classList.toggle('active', krlGlitchEnabled);
+      krlGlitchToggle.textContent = krlGlitchEnabled ? 'On' : 'Off';
+    }
+    if(krlLockToggle){
+      krlLockToggle.classList.toggle('active', krlLockEnabled);
+      krlLockToggle.textContent = krlLockEnabled ? 'On' : 'Off';
+    }
+    logoInner.classList.remove('glitch');
+    clearTimeout(glitchTimer);
+    glitchTimer = null;
+    if(krlGlitchEnabled) scheduleGlitch();
+    if(krlLockEnabled) setLogo(true);
     if(woodsWhiteToggle){
       woodsWhiteToggle.classList.toggle('active', woodsWhiteMode);
       woodsWhiteToggle.textContent = woodsWhiteMode ? 'On' : 'Off';
+    }
+    if(Array.isArray(savedState.paletteEnabled) && savedState.paletteEnabled.length === paletteEnabled.length){
+      paletteEnabled.splice(0, paletteEnabled.length, ...savedState.paletteEnabled.map(Boolean));
+      if(!paletteEnabled.some(Boolean)) paletteEnabled[0] = true;
     }
     if(Number.isInteger(savedState.palette) && savedState.palette >= 0 && savedState.palette < PALETTES.length){
       palToIdx = savedState.palette;
@@ -1909,6 +2564,7 @@
     nextPalAt = clock + PAL_DWELL;
     renderSceneMenu();
     renderPaletteGrid();
+    syncDropdownMeta();
     renderLookRow();
   }
 
@@ -2180,7 +2836,8 @@
   const LOGO_GLOW_FREEZE_SEC = 0.55;
   const LOGO_FX_IDLE_FPS = 24;
   const LOGO_FX_TWEEN_FPS = 36;
-  const LOGO_FX_MAX_W = 1100;
+  const LOGO_FX_MAX_W = 1800;
+  const LOGO_FX_MAX_DPR = 2.0;
   const LOGO_CANVAS_OVERFLOW = 0.30;
   const LOGO_CANVAS_DRAW_PAD = 0.228;
   let logoFreezeUntil = 0;   // pause glow-color/glitch updates while a logo fades in
@@ -2210,9 +2867,9 @@
     const bounds = logoImg.getBoundingClientRect();
     const cssW = Math.round(bounds.width || logoImg.clientWidth || Math.min(window.innerWidth * 0.66, LOGO_FX_MAX_W));
     if(!cssW) return false;
-    const dpr = Math.min(window.devicePixelRatio || 1, 1.0);
+    const dpr = Math.min(window.devicePixelRatio || 1, LOGO_FX_MAX_DPR);
     const padScale = 1 + LOGO_CANVAS_OVERFLOW * 2;
-    const targetW = Math.min(Math.round(LOGO_FX_MAX_W * padScale), Math.max(520, Math.round(cssW * dpr * padScale)));
+    const targetW = Math.min(Math.round(LOGO_FX_MAX_W * padScale), Math.max(720, Math.round(cssW * dpr * padScale)));
     const targetH = Math.max(2, Math.round(targetW * (649 / 2403)));
     if(!force && targetW === logoFxLastW && targetH === logoFxLastH) return false;
     logoFxLastW = targetW;
@@ -2492,7 +3149,13 @@
       renderWoodsLogo(true);
     }
   }
-  function flipLogo(){ setLogo(!showingText); }
+  function flipLogo(){
+    if(krlLockEnabled){
+      if(!showingText) setLogo(true);
+      return;
+    }
+    setLogo(!showingText);
+  }
 
   // preload the Tourner font so the KRL text paints in the right face from the start
   if(document.fonts && document.fonts.load) document.fonts.load('64px "Tourner"').catch(()=>{});
@@ -2526,6 +3189,7 @@
   preloadedLogo.src = 'logo.png';
 
   function glitch(force = false){
+    if(!krlGlitchEnabled) return;
     if(!showingText) return;                 // never glitch the Woods PNG logo
     if(!force && clock < logoFreezeUntil) return;
     logoInner.classList.remove('glitch');
@@ -2534,9 +3198,10 @@
     setTimeout(() => logoInner.classList.remove('glitch'), 280);
   }
 
-  let logoTimer = setInterval(() => { if(logoAuto) flipLogo(); }, LOGO_INTERVAL);
+  let logoTimer = setInterval(() => { if(logoAuto && !krlLockEnabled) flipLogo(); }, LOGO_INTERVAL);
   let glitchTimer = null;
   function scheduleGlitch(){
+    if(!krlGlitchEnabled) return;
     const delay = 6000 + Math.random()*9000;
     glitchTimer = setTimeout(() => { glitch(); scheduleGlitch(); }, delay);
   }
@@ -2621,7 +3286,8 @@
   /* ============================================================
      RENDER LOOP  (single rAF, delta-timed, never reloads)
      ============================================================ */
-  let clock = 0;          // seconds (visual time, pausable-safe)
+  let clock = 0;          // seconds (global visual time, pausable-safe)
+  let sceneClock = 0;     // monotonic scene-motion time (never runs backward)
   let last = performance.now();
   const initialLook = (savedState && Number.isInteger(savedState.look) && savedState.look >= 0 && savedState.look < LOOKS.length)
     ? savedState.look
@@ -2665,6 +3331,20 @@
     if(!rainbowMode && autoPalette && clock >= nextPalAt){ startPaletteTween(); nextPalAt = clock + PAL_DWELL; }
     updatePalette();
 
+    let transitionVelocityBoost = 1.0;
+    if(velocityTransitionEnabled && transitioning){
+      const velBlend = blendEased;
+      const rampT = Math.max(0, Math.min(1, velBlend / 0.52));
+      const rampIn = rampT * rampT * (3.0 - 2.0 * rampT);
+      const settleT = Math.max(0, Math.min(1, (velBlend - 0.68) / 0.32));
+      const settleEase = settleT * settleT * (3.0 - 2.0 * settleT);
+      const settleOut = 1.0 - settleEase;
+      const body = 0.80 + (1.0 - 0.80) * rampIn;
+      const velocityWindow = rampIn * body * settleOut;
+      transitionVelocityBoost = 1.0 + velocityWindow * 2.0;
+    }
+    sceneClock += dt * post.speed * transitionVelocityBoost;
+
     // Keep logo motion smooth by updating the scale every frame. Only the more
     // expensive accent/glow colour writes stay throttled.
     const logoPulseTarget = micReactive
@@ -2707,12 +3387,13 @@
     gl.bindFramebuffer(gl.FRAMEBUFFER, sceneT.fbo);
     gl.viewport(0,0,RW,RH);
     gl.uniform2f(sceneProg.u('u_res'), RW, RH);
-    gl.uniform1f(sceneProg.u('u_time'), clock);
+    gl.uniform1f(sceneProg.u('u_time'), sceneClock);
     gl.uniform1f(sceneProg.u('u_energy'), E);
     gl.uniform1i(sceneProg.u('u_sceneA'), sceneA);
     gl.uniform1i(sceneProg.u('u_sceneB'), sceneB);
     gl.uniform1f(sceneProg.u('u_blend'), blendEased);
-    gl.uniform1f(sceneProg.u('u_speed'), post.speed);
+    gl.uniform1f(sceneProg.u('u_speed'), 1.0);
+    gl.uniform1f(sceneProg.u('u_sceneFlow'), sceneFlowEnabled ? 1.0 : 0.0);
     gl.uniform3fv(sceneProg.u('u_c0'), cur.c0);
     gl.uniform3fv(sceneProg.u('u_c1'), cur.c1);
     gl.uniform3fv(sceneProg.u('u_c2'), cur.c2);
