@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>KRL // VFX</title>
+<style>
+  @font-face{
+    font-family:"Tourner";
+    src:url("Tourner.ttf") format("truetype");
+    font-display:swap;
+  }
+  :root{
+    --energy: 0;
+    --logoScale: 1;
+    --accent: #ffffff;
+    --accentSoft: rgba(255,255,255,0.22);
+    --accent2: #66e0ff;
+  }
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html,body{ width:100%; height:100%; overflow:hidden; background:#000; }
+  body{
+    font-family: "Arial Black", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    color:#fff;
+    cursor:none; /* re-enabled on mouse move */
+  }
+  body.show-cursor{ cursor:default; }
+
+  #gl{
+    position:fixed; inset:0;
+    width:100%; height:100%;
+    display:block;
+    z-index:0;
+  }
+
+  /* ---------- LOGO ---------- */
+  #logo{
+    position:fixed; inset:0;
+    display:grid; place-items:center;
+    z-index:3;
+    pointer-events:none;
+  }
+  /* soft pad behind logo so it always reads over busy visuals */
+  #logoGlowBg{
+    position:absolute;
+    width:min(82vw,90vh); height:min(46vw,52vh);
+    border-radius:50%;
+    background:radial-gradient(ellipse at center,
+        rgba(0,0,0,0.52) 0%,
+        rgba(0,0,0,0.32) 42%,
+        rgba(0,0,0,0.0) 72%);
+    opacity:calc(0.55 + var(--energy) * 0.15);
+    transition:opacity .6s linear;
+  }
+  /* hide the dark pad when the refracting glass KRL is on the canvas (pad would darken it) */
+  #logoGlowBg.padHidden{ opacity:0; }
+  .logoInner{
+    position:relative;
+    display:grid;
+    place-items:center;
+    scale: var(--logoScale);
+    will-change: scale, translate;
+    animation: float 13s ease-in-out infinite;
+  }
+  @keyframes float{
+    0%,100%{ translate:0 -0.7%; }
+    50%    { translate:0  0.7%; }
+  }
+  .layer{
+    grid-area:1 / 1;
+    display:grid; place-items:center;
+    will-change:opacity;
+    transition: opacity 1.1s cubic-bezier(.4,0,.2,1);   /* opacity-only = nothing recomputes the glow mid-fade */
+  }
+  .layer.hidden{ opacity:0; }
+  .layer.shown { opacity:1; }
+
+  /* ---- KRL: WHITE-GLOW treatment (clean solid letters, white glow, no colour cast) ---- */
+  .frostText{
+    display:inline-block;
+    font-family:"Tourner","Arial Black",sans-serif;
+    font-size:min(27vw, 34vh);
+    line-height:1;
+    white-space:nowrap;
+    transform: translateY(var(--krlTrim, 0.097em));   /* visually centre the Tourner caps */
+    color:#fff;
+    text-shadow:
+       0 0 6px  rgba(255,255,255,0.95),
+       0 0 20px rgba(255,255,255,0.60),
+       0 0 48px rgba(255,255,255,0.35);
+    user-select:none;
+  }
+
+  /* ---- Grand Woods PNG logo ---- */
+  #logoImg{
+    width:min(66vw, 92vw);
+    max-height:min(42vh, 40vw);
+    object-fit:contain;
+    filter:
+       drop-shadow(0 3px 7px rgba(0,0,0,0.6))
+       drop-shadow(0 0 9px rgba(255,255,255,0.28))
+       drop-shadow(0 0 36px var(--accent));
+    transition:filter .45s ease;
+    user-select:none;
+  }
+  #logoImg.glowSettling{
+    filter:
+       drop-shadow(0 3px 7px rgba(0,0,0,0.6))
+       drop-shadow(0 0 7px rgba(255,255,255,0.18))
+       drop-shadow(0 0 18px var(--accentSoft))
+       drop-shadow(0 0 30px var(--accentSoft));
+  }
+
+  /* ---- gentle glitch: text-only shimmer, never applied to the Woods PNG ---- */
+  .logoInner.glitch{ animation: glitchShift .32s steps(3,end) 1, float 13s ease-in-out infinite; }
+  @keyframes glitchShift{
+    0%,100%{ translate:0 0; }
+    25%    { translate:-0.5% 0; }
+    50%    { translate: 0.7% 0; }
+    75%    { translate:-0.3% 0; }
+  }
+  .logoInner.glitch .frostText{
+    text-shadow:
+       0.035em 0 0 #ff2d75,
+      -0.035em 0 0 #00e5ff,
+       0 0 18px rgba(255,255,255,0.8);
+  }
+
+  /* ---------- HELP / HUD ---------- */
+  #help{
+    position:fixed;
+    left:50%; bottom:4vh; transform:translateX(-50%);
+    z-index:5;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:13px; font-weight:600;
+    letter-spacing:0.02em;
+    color:rgba(255,255,255,0.82);
+    background:rgba(0,0,0,0.42);
+    backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:10px;
+    padding:12px 16px;
+    text-align:center;
+    line-height:1.7;
+    transition:opacity .6s ease;
+    max-width:92vw;
+  }
+  #help.fade{ opacity:0; }
+  #help b{ color:#fff; }
+  #help .k{
+    display:inline-block;
+    min-width:1.4em;
+    padding:1px 6px;
+    margin:0 1px;
+    border-radius:5px;
+    background:rgba(255,255,255,0.14);
+    color:#fff;
+    border:1px solid rgba(255,255,255,0.18);
+  }
+  #toast{
+    position:fixed; top:4vh; left:50%; transform:translateX(-50%);
+    z-index:6;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+    color:#fff;
+    background:rgba(0,0,0,0.5);
+    border:1px solid rgba(255,255,255,0.15);
+    border-radius:8px;
+    padding:8px 14px;
+    opacity:0;
+    transition:opacity .35s ease;
+    pointer-events:none;
+  }
+  #toast.show{ opacity:1; }
+  #micHud{
+    position:fixed;
+    right:2.4vw; top:3.2vh;
+    z-index:6;
+    min-width:164px;
+    padding:10px 12px;
+    border-radius:10px;
+    background:rgba(0,0,0,0.34);
+    border:1px solid rgba(255,255,255,0.14);
+    backdrop-filter:blur(8px);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:12px;
+    color:rgba(255,255,255,0.86);
+    opacity:0;
+    transition:opacity .25s ease;
+    pointer-events:none;
+  }
+  #micHud.show{ opacity:1; }
+  #micHudLabel{
+    display:flex;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:7px;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+  }
+  #micHudBar{
+    height:8px;
+    border-radius:999px;
+    overflow:hidden;
+    background:rgba(255,255,255,0.10);
+  }
+  #micHudFill{
+    width:0%;
+    height:100%;
+    border-radius:inherit;
+    background:linear-gradient(90deg, #00e5ff 0%, #24ff72 45%, #ffe14d 72%, #ff4d9a 100%);
+    box-shadow:0 0 14px rgba(0,229,255,0.28);
+    transition:width .08s linear;
+  }
+  #sceneMenuToggle{
+    position:fixed;
+    left:2.4vw; top:3.2vh;
+    z-index:7;
+    border:1px solid rgba(255,255,255,0.18);
+    border-radius:999px;
+    background:rgba(0,0,0,0.44);
+    color:#fff;
+    padding:10px 14px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:12px;
+    font-weight:800;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    backdrop-filter:blur(10px);
+    cursor:pointer;
+  }
+  #sceneMenuPanel{
+    position:fixed;
+    left:2.4vw; top:9.2vh;
+    z-index:7;
+    width:min(420px, 92vw);
+    max-height:74vh;
+    overflow:auto;
+    padding:14px;
+    border-radius:16px;
+    background:rgba(3,8,18,0.84);
+    border:1px solid rgba(255,255,255,0.14);
+    box-shadow:0 24px 70px rgba(0,0,0,0.42);
+    backdrop-filter:blur(16px);
+    opacity:0;
+    pointer-events:none;
+    transform:translateY(-6px);
+    transition:opacity .22s ease, transform .22s ease;
+  }
+  #sceneMenuPanel.open{
+    opacity:1;
+    pointer-events:auto;
+    transform:translateY(0);
+  }
+  #sceneMenuHead{
+    display:flex;
+    align-items:flex-start;
+    justify-content:space-between;
+    gap:14px;
+    margin-bottom:12px;
+  }
+  #sceneMenuTitle{
+    font-family: "Arial Black", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    font-size:22px;
+    line-height:1;
+    letter-spacing:0.02em;
+  }
+  #sceneMenuMeta{
+    margin-top:5px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px;
+    color:rgba(255,255,255,0.62);
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+  }
+  #sceneMenuActions{
+    display:flex;
+    gap:8px;
+    margin-bottom:14px;
+    flex-wrap:wrap;
+  }
+  .sceneMenuBtn{
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:999px;
+    background:rgba(255,255,255,0.08);
+    color:#fff;
+    padding:7px 11px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    cursor:pointer;
+  }
+  #lookSection{ margin-bottom:13px; }
+  #lookSectionLabel{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+    color:rgba(255,255,255,0.5); margin-bottom:7px;
+  }
+  #lookRow{ display:flex; flex-wrap:wrap; gap:7px; }
+  .lookBtn{
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:999px;
+    background:rgba(255,255,255,0.06);
+    color:rgba(255,255,255,0.82);
+    padding:8px 13px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px; font-weight:800; letter-spacing:0.07em;
+    cursor:pointer;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+  }
+  .lookBtn:hover{ background:rgba(255,255,255,0.12); color:#fff; }
+  .lookBtn.active{
+    background:linear-gradient(135deg, rgba(0,229,255,0.9), rgba(255,45,150,0.9));
+    border-color:rgba(255,255,255,0.6);
+    color:#04060f;
+    box-shadow:0 0 20px rgba(0,229,255,0.22);
+  }
+  #sceneMenuList{
+    display:grid;
+    gap:8px;
+  }
+  .sceneRow{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) auto;
+    gap:8px;
+    align-items:center;
+  }
+  .scenePreview,
+  .sceneLoopToggle{
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:12px;
+    color:#fff;
+    cursor:pointer;
+  }
+  .scenePreview{
+    background:linear-gradient(135deg, rgba(30,45,85,0.44), rgba(7,14,28,0.82));
+    text-align:left;
+    padding:12px 12px 11px;
+  }
+  .scenePreview.current{
+    border-color:rgba(0,229,255,0.82);
+    box-shadow:0 0 0 1px rgba(0,229,255,0.24) inset, 0 0 26px rgba(0,229,255,0.12);
+  }
+  .scenePreviewLabel{
+    display:block;
+    font-family:"Arial Black", "Helvetica Neue", Helvetica, Arial, system-ui, sans-serif;
+    font-size:15px;
+    line-height:1.05;
+    letter-spacing:0.02em;
+  }
+  .scenePreviewSub{
+    display:block;
+    margin-top:5px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:10px;
+    color:rgba(255,255,255,0.58);
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+  }
+  .sceneLoopToggle{
+    min-width:98px;
+    padding:11px 12px;
+    background:rgba(255,255,255,0.06);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+  }
+  .sceneLoopToggle.active{
+    background:linear-gradient(135deg, rgba(0,229,255,0.24), rgba(255,45,117,0.24));
+    border-color:rgba(255,255,255,0.26);
+  }
+
+  #fpsHud{
+    position:fixed; right:2.4vw; bottom:3vh;
+    z-index:6;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px; font-weight:700; letter-spacing:0.06em;
+    color:rgba(255,255,255,0.55);
+    background:rgba(0,0,0,0.32);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:7px;
+    padding:5px 9px;
+    pointer-events:none;
+  }
+  #fpsHud.hidden{ display:none; }
+
+  #fatal{
+    position:fixed; inset:0; z-index:10;
+    display:none; place-items:center;
+    background:#000; color:#fff; text-align:center;
+    font-family: ui-monospace, monospace; font-size:16px; padding:24px;
+  }
+</style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+
+  <div id="logo">
+    <div id="logoGlowBg"></div>
+    <div class="logoInner" id="logoInner">
+      <div class="layer shown" id="logoTextLayer">
+        <div class="frostText" id="frostText" data-text="KRL">KRL</div>
+      </div>
+      <div class="layer hidden" id="logoImgLayer">
+        <img id="logoImg" alt="logo" />
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+  <div id="micHud">
+    <div id="micHudLabel"><span>mic</span><span id="micHudState">off</span></div>
+    <div id="micHudBar"><div id="micHudFill"></div></div>
+  </div>
+  <div id="fpsHud">— fps</div>
+  <button id="sceneMenuToggle" type="button">Visuals</button>
+  <div id="sceneMenuPanel">
+    <div id="sceneMenuHead">
+      <div>
+        <div id="sceneMenuTitle">Visual Loop</div>
+        <div id="sceneMenuMeta">Pick a style, then fine-tune the loop</div>
+      </div>
+    </div>
+    <div id="lookSection">
+      <div id="lookSectionLabel">Style — press X to cycle</div>
+      <div id="lookRow"></div>
+    </div>
+    <div id="sceneMenuActions">
+      <button class="sceneMenuBtn" id="sceneMenuAllOn" type="button">All On</button>
+      <button class="sceneMenuBtn" id="sceneMenuCurated" type="button">Curated</button>
+      <button class="sceneMenuBtn" id="sceneMenuClose" type="button">Close</button>
+    </div>
+    <div id="sceneMenuList"></div>
+  </div>
+
+  <div id="help">
+    <b>KRL // VFX</b> &nbsp;·&nbsp; auto-running &nbsp;·&nbsp; press <span class="k">H</span> to hide<br>
+    <span class="k">F</span> fullscreen
+    <span class="k">␣</span> next scene
+    <span class="k">C</span> colorway
+    <span class="k">V</span> visuals
+    <span class="k">L</span> logo flip
+    <span class="k">G</span> glitch
+    <span class="k">M</span> mic
+    <span class="k">S</span> grit
+    <span class="k">A</span> auto on/off
+    <span class="k">X</span> style
+    <span class="k">P</span> fps
+    <span class="k">1</span>–<span class="k">0</span> scenes
+  </div>
+
+  <div id="fatal">This visual engine needs a browser with WebGL2 (any modern Chrome, Edge, Safari, or Firefox).</div>
+
+<script>
+"use strict";
+(function(){
+  const cvs = document.getElementById('gl');
+  const fatal = document.getElementById('fatal');
+  const gl = cvs.getContext('webgl2', { antialias:false, alpha:false, powerPreference:'high-performance' });
+  if(!gl){ fatal.style.display='grid'; return; }
+
+  /* ============================================================
+     SHADERS
+     ============================================================ */
+  const VERT = `#version 300 es
+  const vec2 verts[3] = vec2[](vec2(-1.0,-1.0), vec2(3.0,-1.0), vec2(-1.0,3.0));
+  out vec2 v_uv;
+  void main(){
+    vec2 p = verts[gl_VertexID];
+    v_uv = p * 0.5 + 0.5;
+    gl_Position = vec4(p, 0.0, 1.0);
+  }`;
+
+  // ---- main scene shader (renders to offscreen) ----
+  const SCENE_FRAG = `#version 300 es
+  precision highp float;
+  in vec2 v_uv;
+  out vec4 fragColor;
+  uniform vec2  u_res;
+  uniform float u_time;
+  uniform float u_energy;
+  uniform int   u_sceneA;
+  uniform int   u_sceneB;
+  uniform float u_blend;
+  uniform float u_speed;                  // per-look motion speed
+  uniform vec3  u_c0, u_c1, u_c2, u_c3;   // 4-stop colorway gradient with a full multicolor loop
+
+  float hash21(vec2 p){ p = fract(p*vec2(123.34,345.45)); p += dot(p, p+34.345); return fract(p.x*p.y); }
+  float noise(vec2 p){
+    vec2 i=floor(p), f=fract(p);
+    float a=hash21(i), b=hash21(i+vec2(1.0,0.0)), c=hash21(i+vec2(0.0,1.0)), d=hash21(i+vec2(1.0,1.0));
+    vec2 u=f*f*(3.0-2.0*f);
+    return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
+  }
+  float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<4;i++){ v+=a*noise(p); p*=2.02; a*=0.5; } return v; }
+  // 4-stop looping gradient so every scene can travel through multiple colors cleanly
+  vec3 palette(float t){
+    float q = fract(t) * 4.0;
+    if(q < 1.0) return mix(u_c0, u_c1, q);
+    if(q < 2.0) return mix(u_c1, u_c2, q - 1.0);
+    if(q < 3.0) return mix(u_c2, u_c3, q - 2.0);
+    return mix(u_c3, u_c0, q - 3.0);
+  }
+  vec3 neonGrade(vec3 col){
+    float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+    vec3 sat = mix(vec3(l), col, 1.62);
+    sat *= vec3(1.06, 1.02, 1.10);   // slight cyan/magenta bias for a stronger neon read
+    return max(sat * 1.18 - 0.004, 0.0);
+  }
+
+  vec3 sceneTunnel(vec2 uv, float t){
+    float a = atan(uv.y, uv.x);
+    float r = length(uv) + 1e-3;
+    float depth = 0.35/r + t*0.82;
+    float rings = sin(depth*10.0 - t)*0.5 + 0.5;
+    float spokes = sin(a*16.0 + depth*2.0)*0.5 + 0.5;
+    float pat = mix(rings, rings*spokes, 0.55);
+    vec3 col = palette(depth*0.05 + pat*0.5);
+    col *= smoothstep(0.02, 0.48, r);
+    col *= 0.46 + 0.58*rings;
+    return col;
+  }
+  vec3 sceneKaleido(vec2 uv, float t){
+    float a = atan(uv.y, uv.x);
+    float r = length(uv);
+    float seg = 8.0;
+    float aa = mod(a, 6.28318/seg);
+    aa = abs(aa - 3.14159/seg);
+    vec2 p = vec2(cos(aa), sin(aa)) * r;
+    float n = fbm(p*3.2 + vec2(t*0.28, -t*0.22));
+    n += 0.5*fbm(p*6.6 - t*0.16);
+    vec3 col = palette(n*0.55 + r*0.3 - t*0.03);
+    col *= 0.42 + 0.62*n;
+    return col;
+  }
+  vec3 scenePlasma(vec2 uv, float t){
+    vec2 p = uv*1.5;
+    vec2 q = vec2(fbm(p + vec2(1.7,9.2) + 0.14*t), fbm(p + vec2(8.3,2.8) - 0.12*t));
+    vec2 r = vec2(fbm(p + 3.0*q + vec2(1.7,9.2) + 0.17*t),
+                  fbm(p + 3.0*q + vec2(8.3,2.8) + 0.13*t));
+    float w = fbm(p + 3.5*r + 0.07*t);
+    vec3 col = palette(0.9*w + 0.12*length(r) + 0.05*sin(t*0.15));
+    col *= 0.42 + 0.66*w;
+    col += palette(w + 0.3) * 0.13 * smoothstep(0.76, 1.0, w);  // restrained highlights
+    return col;
+  }
+  vec3 sceneGrid(vec2 uv, float t){
+    vec3 col = palette(0.78 + uv.y*0.10) * smoothstep(-0.35, 1.0, uv.y) * 0.14;
+    float haze = fbm(vec2(uv.x*1.8 + t*0.16, uv.y*1.5 - t*0.08));
+    col += palette(0.48 + haze*0.25) * smoothstep(-0.05, 0.95, uv.y + haze*0.18) * 0.18;
+    float sun = smoothstep(0.24, 0.0, length(uv - vec2(0.0, 0.18)));
+    col += palette(0.94) * sun * 0.44;
+    if(uv.y < 0.03){
+      float z = 1.0 / (-uv.y + 0.07);
+      float x = uv.x * z;
+      float gx = abs(fract(x*1.6) - 0.5);
+      float gz = abs(fract(z*0.62 - t*1.45) - 0.5);
+      float g = min(gx, gz);
+      float line = smoothstep(0.08, 0.0, g);
+      vec3 gc = palette(0.10 + 0.08*sin(t*0.2) + x*0.01);
+      col += gc * line * (0.92 - clamp(z/10.0, 0.0, 0.55));
+    }
+    float horizon = smoothstep(0.18, 0.0, abs(uv.y - 0.02));
+    col += palette(0.84) * horizon * 0.32;
+    return col;
+  }
+  vec3 sceneBars(vec2 uv, float t){
+    vec2 p = uv * 1.1;
+    float d1 = p.x*0.9 + p.y*0.35;
+    float d2 = -p.x*0.45 + p.y*1.15;
+    float stripeA = smoothstep(0.10, 0.98, 0.5 + 0.5*sin(d1*12.5 - t*4.4));
+    float stripeB = smoothstep(0.08, 0.95, 0.5 + 0.5*sin(d2*16.5 + t*3.5));
+    float shimmer = 0.5 + 0.5*sin((p.x - p.y)*27.0 - t*6.7);
+    vec3 col = palette(0.18 + p.y*0.22 + t*0.03) * 0.18;
+    col += palette(0.38 + d1*0.05 + t*0.09) * stripeA * 0.58;
+    col += palette(0.80 + d2*0.04 - t*0.06) * stripeB * 0.38;
+    col += palette(0.90) * pow(max(stripeA*stripeB, 0.0), 1.8) * 0.42;
+    col += palette(0.62) * smoothstep(0.88, 1.0, shimmer) * 0.12;
+    return col;
+  }
+  vec3 scenePrism(vec2 uv, float t){
+    vec2 p = uv * 1.18;
+    float nA = fbm(p*2.6 + vec2(t*0.24, -t*0.18));
+    float nB = fbm(p.yx*3.4 + vec2(-t*0.16, t*0.21));
+    float diagA = smoothstep(0.13, 0.0, abs(fract((p.x - p.y)*4.6 + nA*0.9 - t*0.24) - 0.5));
+    float diagB = smoothstep(0.11, 0.0, abs(fract((p.x + p.y)*5.2 - nB*0.7 + t*0.20) - 0.5));
+    float scan = smoothstep(0.09, 0.0, abs(fract(p.y*3.8 - t*0.46 + nA*0.6) - 0.5));
+    float shards = smoothstep(0.46, 0.78, fbm(p*4.1 + vec2(nA*1.3, nB*1.1) + t*0.12));
+    float cross = pow(max(diagA*diagB, 0.0), 0.8);
+    vec3 col = palette(0.10 + nA*0.22 + p.y*0.04) * 0.16;
+    col += palette(0.28 + nB*0.32 - t*0.03) * diagA * 0.46;
+    col += palette(0.56 + nA*0.24 + t*0.02) * diagB * 0.42;
+    col += palette(0.84 + nB*0.16) * scan * 0.26;
+    col += palette(0.72 + shards*0.18) * shards * 0.24;
+    col += palette(0.96) * cross * 0.28;
+    return col;
+  }
+  vec3 sceneRibbons(vec2 uv, float t){
+    vec2 p = uv * 1.08;
+    float flowA = fbm(p*2.3 + vec2(t*0.24, -t*0.16));
+    float flowB = fbm((p + vec2(2.7, -1.9))*3.0 + vec2(-t*0.20, t*0.15));
+    float ribbonA = smoothstep(0.18, 0.0, abs(p.y + 0.28*sin(p.x*2.9 + t*1.75) - (flowA - 0.5)*0.42));
+    float ribbonB = smoothstep(0.16, 0.0, abs(p.y - 0.24*cos(p.x*3.7 - t*1.42) + (flowB - 0.5)*0.36));
+    vec3 col = palette(flowA*0.42 + p.x*0.06 + t*0.02) * 0.14;
+    col += palette(0.20 + flowA*0.65) * ribbonA * 0.62;
+    col += palette(0.72 + flowB*0.38) * ribbonB * 0.56;
+    col += palette(0.92) * pow(max(ribbonA + ribbonB - 0.95, 0.0), 1.6) * 0.30;
+    return col;
+  }
+  vec3 scenePulse(vec2 uv, float t){
+    float a = atan(uv.y, uv.x);
+    float r = length(uv);
+    float sr = mix(r, max(abs(uv.x), abs(uv.y)) * 1.16, 0.64);
+    float petals = 0.5 + 0.5*cos(a*8.0 - t*2.2);
+    float burst = 0.5 + 0.5*sin(sr*18.0 - t*6.3 + petals*3.2);
+    float ring = smoothstep(0.72, 1.0, burst) * smoothstep(1.18, 0.08, sr);
+    float core = smoothstep(0.52, 0.0, sr);
+    float rays = pow(max(0.0, cos(a*10.0 + t*0.9)), 14.0) * smoothstep(1.10, 0.12, sr);
+    float halo = smoothstep(0.08, 0.0, abs(fract(sr*4.8 - t*0.85) - 0.5)) * smoothstep(1.26, 0.18, sr);
+    vec3 col = palette(0.16 + sr*0.55 + petals*0.20) * (0.18 + 0.28*(1.0 - sr));
+    col += palette(0.78 + petals*0.16) * ring * 0.52;
+    col += palette(0.90) * core * (0.28 + 0.22*petals);
+    col += palette(0.58 + petals*0.12) * rays * 0.24;
+    col += palette(0.34 + sr*0.20 - t*0.03) * halo * 0.16;
+    return col;
+  }
+  vec3 sceneLasers(vec2 uv, float t){
+    vec2 p = uv;
+    float haze = fbm(p*2.4 + vec2(t*0.14, -t*0.08));
+    float pulse = 0.5 + 0.5*sin(t*2.2);
+    vec2 emitL = vec2(-0.85, -0.42 + 0.08*sin(t*0.8));
+    vec2 emitR = vec2( 0.85, -0.38 + 0.09*cos(t*0.7));
+    vec2 qL = p - emitL;
+    vec2 qR = p - emitR;
+    float aL = atan(qL.y, qL.x);
+    float aR = atan(qR.y, qR.x);
+    float fanL1 = pow(max(0.0, cos((aL + 0.85) * 13.0 - t*1.9)), 34.0);
+    float fanL2 = pow(max(0.0, cos((aL + 0.25) * 12.0 - t*1.6)), 28.0);
+    float fanR1 = pow(max(0.0, cos((aR - 0.88) * 13.0 + t*1.8)), 34.0);
+    float fanR2 = pow(max(0.0, cos((aR - 0.18) * 12.0 + t*1.5)), 28.0);
+    float sweep  = smoothstep(0.024, 0.0, abs(p.x*0.72 + p.y*0.28 + 0.26*sin(t*1.4)));
+    float cross  = smoothstep(0.026, 0.0, abs(p.x*0.66 - p.y*0.34 - 0.22*cos(t*1.3)));
+    float leftMask  = smoothstep(1.55, 0.08, length(qL));
+    float rightMask = smoothstep(1.55, 0.08, length(qR));
+    float fanLeft = (fanL1 + fanL2) * leftMask;
+    float fanRight = (fanR1 + fanR2) * rightMask;
+    float hit = pow(max(fanLeft * fanRight + sweep * cross, 0.0), 0.65);
+    vec3 col = palette(0.08 + haze*0.18) * 0.12;
+    col += palette(0.18 + haze*0.20) * fanLeft * (0.44 + pulse*0.14);
+    col += palette(0.54 + haze*0.16) * fanRight * (0.40 + pulse*0.12);
+    col += palette(0.82 + haze*0.10) * sweep * 0.36;
+    col += palette(0.94) * cross * 0.30;
+    col += palette(0.98) * hit * (0.28 + pulse*0.20);
+    col += palette(0.40) * smoothstep(1.0, 0.18, length(p)) * 0.08;
+    return col;
+  }
+  vec3 sceneSmoke(vec2 uv, float t){
+    vec2 p = uv * 1.35;
+    float n1 = fbm(p*1.8 + vec2(t*0.14, -t*0.09));
+    float n2 = fbm(p*3.2 + vec2(-t*0.08, t*0.12));
+    float cloud = smoothstep(0.22, 0.84, n1*0.72 + n2*0.38);
+    float shafts = pow(max(0.0, sin((uv.x + n2*0.25)*8.0 - t*1.8)), 10.0) * smoothstep(0.7, -0.4, uv.y);
+    vec3 col = palette(0.12 + n1*0.24) * 0.10;
+    col += palette(0.36 + n2*0.20) * cloud * 0.24;
+    col += palette(0.76 + n1*0.10) * shafts * 0.28;
+    return col;
+  }
+  vec3 sceneAurora(vec2 uv, float t){
+    vec2 p = uv * 1.10;
+    float drift = fbm(vec2(p.x*1.4 + t*0.10, p.y*1.8 - t*0.12));
+    float drift2 = fbm(vec2(p.x*2.1 - t*0.07, p.y*2.6 + t*0.09));
+    float bandA = smoothstep(0.17, 0.0, abs(p.y + 0.34*sin(p.x*1.5 + drift*2.6 + t*0.34) - (drift - 0.5)*0.64));
+    float bandB = smoothstep(0.15, 0.0, abs(p.y + 0.08 + 0.28*cos(p.x*1.9 - drift2*2.3 - t*0.28) + (drift2 - 0.5)*0.52));
+    float curtain = smoothstep(0.10, 0.0, abs(fract(p.x*1.4 + drift*1.3 - t*0.06) - 0.5));
+    vec3 col = palette(0.10 + drift*0.20) * smoothstep(-0.8, 0.8, p.y + 0.9) * 0.14;
+    col += palette(0.26 + drift*0.42) * bandA * 0.52;
+    col += palette(0.62 + drift2*0.26) * bandB * 0.46;
+    col += palette(0.88 + drift*0.08) * curtain * (bandA + bandB) * 0.20;
+    return col;
+  }
+  vec3 sceneInterference(vec2 uv, float t){
+    vec2 p = uv * 1.15;
+    float waveA = sin(p.x*10.0 + sin(p.y*2.6 - t*0.8)*2.0 - t*2.3);
+    float waveB = sin(p.y*11.0 + cos(p.x*2.1 + t*0.7)*2.3 + t*2.0);
+    float waveC = sin((p.x + p.y)*8.5 - t*2.8);
+    float moire = 0.5 + 0.5*sin((waveA + waveB + waveC) * 2.2);
+    float ridge = smoothstep(0.72, 0.98, moire);
+    float weave = smoothstep(0.08, 0.0, abs(fract((p.x - p.y)*4.6 + waveB*0.2) - 0.5));
+    vec3 col = palette(0.12 + moire*0.16 + t*0.01) * 0.16;
+    col += palette(0.40 + waveA*0.08 + waveB*0.06) * ridge * 0.42;
+    col += palette(0.74 + waveC*0.08) * weave * 0.22;
+    return col;
+  }
+  vec3 sceneComets(vec2 uv, float t){
+    vec2 p = uv;
+    vec3 col = palette(0.08 + p.y*0.10) * 0.10;
+    for(int i=0;i<6;i++){
+      float fi = float(i);
+      float seed = hash21(vec2(fi, 4.7));
+      float ph = fract(seed + t*(0.18 + seed*0.18));
+      vec2 head = vec2(mix(-1.35, 1.35, fract(seed*2.3 + ph*1.2)),
+                       mix(1.05, -1.15, ph));
+      vec2 dir = normalize(vec2(0.42 + seed*0.5, -0.9));
+      vec2 rel = p - head;
+      float along = dot(rel, -dir);
+      float side = abs(dot(rel, vec2(-dir.y, dir.x)));
+      float trail = smoothstep(0.34, 0.0, side) * smoothstep(-0.04, 0.22, along) * smoothstep(1.28, 0.0, along);
+      float headGlow = smoothstep(0.12, 0.0, length(rel));
+      col += palette(seed + fi*0.09 + t*0.03) * trail * 0.34;
+      col += palette(0.92 + seed*0.06) * headGlow * 0.30;
+    }
+    return col;
+  }
+  vec3 sceneCathedral(vec2 uv, float t){
+    vec2 p = uv;
+    float mx = abs(p.x);
+    float vault = 1.0 - smoothstep(0.16, 0.96, abs(p.y + 0.22 + mx*mx*0.88));
+    float pillars = smoothstep(0.032, 0.0, abs(fract(mx*4.4 - 0.08*sin(t*0.6)) - 0.5));
+    float beams = pow(max(0.0, sin((p.x*0.85 + p.y*0.2)*11.0 - t*2.0)), 14.0) * smoothstep(0.9, -0.2, p.y);
+    float fog = fbm(vec2(p.x*1.8 + t*0.05, p.y*2.4 - t*0.08));
+    vec3 col = palette(0.08 + fog*0.14) * 0.11;
+    col += palette(0.28 + p.y*0.08 + fog*0.10) * vault * 0.20;
+    col += palette(0.54 + fog*0.18) * pillars * 0.28;
+    col += palette(0.86 + fog*0.10) * beams * 0.28;
+    return col;
+  }
+  vec3 getScene(int s, vec2 uv, float t){
+    if(s==0) return sceneTunnel(uv,t);
+    if(s==1) return sceneKaleido(uv,t);
+    if(s==2) return scenePlasma(uv,t);
+    if(s==3) return sceneGrid(uv,t);
+    if(s==4) return sceneBars(uv,t);
+    if(s==5) return scenePrism(uv,t);
+    if(s==6) return sceneRibbons(uv,t);
+    if(s==7) return scenePulse(uv,t);
+    if(s==8) return sceneLasers(uv,t);
+    if(s==9) return sceneSmoke(uv,t);
+    if(s==10) return sceneAurora(uv,t);
+    if(s==11) return sceneInterference(uv,t);
+    if(s==12) return sceneComets(uv,t);
+    return sceneCathedral(uv,t);
+  }
+
+  void main(){
+    vec2 uv = (gl_FragCoord.xy*2.0 - u_res) / u_res.y;
+    float t = u_time;                        // u_time is the speed-integrated visual clock (vizTime)
+    uv *= (1.0 - 0.012*u_energy);            // barely-there breathing, not an in/out pump
+    vec3 col = getScene(u_sceneA, uv, t);
+    if(u_blend > 0.002){ col = mix(col, getScene(u_sceneB, uv, t), u_blend); }  // 2nd scene only during a crossfade
+    col = neonGrade(col);
+    col *= 0.96 + 0.18*u_energy;             // brighter neon mids without full-screen white
+    fragColor = vec4(max(col, 0.0), 1.0);
+  }`;
+
+  // ---- bright extract ----
+  const BRIGHT_FRAG = `#version 300 es
+  precision highp float;
+  in vec2 v_uv; out vec4 o;
+  uniform sampler2D u_tex;
+  void main(){
+    vec3 c = texture(u_tex, v_uv).rgb;
+    float l = max(c.r, max(c.g, c.b));
+    float k = smoothstep(0.56, 0.94, l);
+    o = vec4(c*k, 1.0);
+  }`;
+
+  // ---- separable blur ----
+  const BLUR_FRAG = `#version 300 es
+  precision highp float;
+  in vec2 v_uv; out vec4 o;
+  uniform sampler2D u_tex;
+  uniform vec2 u_dir;
+  void main(){
+    float w0=0.227, w1=0.194, w2=0.121, w3=0.054, w4=0.016;
+    vec3 s = texture(u_tex, v_uv).rgb * w0;
+    s += texture(u_tex, v_uv + u_dir*1.0).rgb * w1;
+    s += texture(u_tex, v_uv - u_dir*1.0).rgb * w1;
+    s += texture(u_tex, v_uv + u_dir*2.0).rgb * w2;
+    s += texture(u_tex, v_uv - u_dir*2.0).rgb * w2;
+    s += texture(u_tex, v_uv + u_dir*3.0).rgb * w3;
+    s += texture(u_tex, v_uv - u_dir*3.0).rgb * w3;
+    s += texture(u_tex, v_uv + u_dir*4.0).rgb * w4;
+    s += texture(u_tex, v_uv - u_dir*4.0).rgb * w4;
+    o = vec4(s, 1.0);
+  }`;
+
+  // ---- composite to screen ----
+  const COMP_FRAG = `#version 300 es
+  precision highp float;
+  in vec2 v_uv; out vec4 fragColor;
+  uniform sampler2D u_scene;
+  uniform sampler2D u_bloom;
+  uniform sampler2D u_logoMask;
+  uniform vec2  u_res;
+  uniform float u_time;
+  uniform float u_grit;
+  uniform float u_energy;
+  uniform float u_sharp;      // unsharp-mask amount
+  uniform float u_bloomAmt;   // bloom intensity
+  uniform float u_sat;        // saturation
+  uniform float u_contrast;   // contrast
+  uniform float u_black;      // black crush / floor lift
+  uniform float u_bands;      // posterize bands (<=1 = off)
+  uniform float u_edge;       // outline / edge overlay
+  uniform float u_ca;         // chromatic aberration scale
+  uniform float u_vig;        // vignette strength
+  uniform float u_strobe;     // white strobe on high energy
+  uniform float u_logoOn;
+  uniform float u_logoOpacity;
+  uniform vec2  u_logoCenter;
+  uniform vec2  u_logoHalf;
+  float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
+  float luma(vec3 c){ return dot(c, vec3(0.2126,0.7152,0.0722)); }
+  void main(){
+    vec2 uv = v_uv;
+    vec2 d = uv - 0.5;
+    vec2 texel = 1.0 / u_res;
+    vec3 sceneC = texture(u_scene, uv).rgb;
+    vec3 sRt = texture(u_scene, uv + vec2(texel.x, 0.0)).rgb;
+    vec3 sLf = texture(u_scene, uv - vec2(texel.x, 0.0)).rgb;
+    vec3 sUp = texture(u_scene, uv + vec2(0.0, texel.y)).rgb;
+    vec3 sDn = texture(u_scene, uv - vec2(0.0, texel.y)).rgb;
+    // unsharp mask -> crisper image
+    vec3 sharp = max(sceneC * 1.72 - (sRt + sLf + sUp + sDn) * 0.18, 0.0);
+    float ca = (0.0011 + 0.0022*u_energy) * (0.24 + length(d)) * u_ca;
+    vec3 col;
+    col.r = mix(sceneC.r, sharp.r, u_sharp) + (texture(u_scene, uv + d*ca).r - sceneC.r) * 0.5;
+    col.g = mix(sceneC.g, sharp.g, u_sharp);
+    col.b = mix(sceneC.b, sharp.b, u_sharp) + (texture(u_scene, uv - d*ca).b - sceneC.b) * 0.5;
+    // bloom
+    col += texture(u_bloom, uv).rgb * (u_bloomAmt + 0.14*u_energy);
+    // edge / outline (Laplacian on luma) — crisp graphic linework, kept sharp by adding after bloom
+    float lap = abs(4.0*luma(sceneC) - (luma(sRt)+luma(sLf)+luma(sUp)+luma(sDn)));
+    float edge = clamp(lap * 7.0, 0.0, 1.0);
+    col += vec3(edge) * u_edge;
+    // vignette (per-look strength)
+    float vig = smoothstep(1.18, 0.24, length(d)*1.30);
+    col *= mix(1.0, vig, clamp(u_vig, 0.0, 1.4));
+    // grit: scanlines + grain
+    float scan = 0.92 + 0.08*sin(uv.y*u_res.y*1.4);
+    col *= mix(1.0, scan, u_grit*0.6);
+    col += (hash(uv*u_res + fract(u_time)) * 2.0 - 1.0) * u_grit * 0.07;
+    // grade: saturation -> black crush -> contrast
+    float lum = luma(col);
+    col = mix(vec3(lum), col, u_sat);
+    col = max(col - u_black, 0.0) / max(1.0 - u_black, 0.001);
+    col = max((col - 0.5) * u_contrast + 0.5, 0.0);
+    // posterize into colour bands (graphic / screen-print look)
+    if(u_bands > 1.5){ col = floor(col * u_bands + 0.5) / u_bands; }
+    // strobe flash on energy peaks
+    col = mix(col, vec3(1.0), u_strobe * smoothstep(0.82, 1.0, u_energy));
+
+    // ---- KRL clear-glass refraction (bends the live visuals through the letters) ----
+    if(u_logoOn > 0.5 && u_logoOpacity > 0.001){
+      vec2 luv = (uv - u_logoCenter) / (2.0 * u_logoHalf) + 0.5;
+      if(luv.x > 0.0 && luv.x < 1.0 && luv.y > 0.0 && luv.y < 1.0){
+        vec2 mtex = 1.0 / vec2(textureSize(u_logoMask, 0));
+        float k = 2.2;                                   // wider stencil -> softer, lens-like
+        float cov = texture(u_logoMask, luv).a;
+        float lx = texture(u_logoMask, luv - vec2(mtex.x*k, 0.0)).a;
+        float rx = texture(u_logoMask, luv + vec2(mtex.x*k, 0.0)).a;
+        float dn = texture(u_logoMask, luv - vec2(0.0, mtex.y*k)).a;
+        float up = texture(u_logoMask, luv + vec2(0.0, mtex.y*k)).a;
+        vec2 grad = vec2(rx - lx, up - dn);
+        vec2 off = -grad * 0.06;                         // refraction strength
+        vec3 glass;
+        glass.r = texture(u_scene, uv + off*1.12).r;     // chromatic dispersion through glass
+        glass.g = texture(u_scene, uv + off      ).g;
+        glass.b = texture(u_scene, uv + off*0.88).b;
+        glass += texture(u_bloom, uv + off).rgb * 1.1;
+        float ge = clamp(length(grad) * 5.0, 0.0, 1.0);
+        glass += vec3(1.0) * ge * 0.55;                  // bright refracting rim
+        float spec = pow(max(0.0, dot(normalize(grad + vec2(0.0,1e-4)), normalize(vec2(-0.55,0.62)))), 4.0);
+        glass += vec3(1.0) * spec * cov * 0.35;          // top-left specular streak
+        glass = glass * 1.04 + 0.02;
+        col = mix(col, glass, cov * u_logoOpacity);
+      }
+    }
+
+    col = col / (1.0 + col * 0.25);         // soft rolloff prevents white screen blowout
+    col = pow(max(col, 0.0), vec3(0.88));
+    fragColor = vec4(col, 1.0);
+  }`;
+
+  /* ============================================================
+     GL HELPERS
+     ============================================================ */
+  function sh(type, src){
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
+      console.error('Shader error:', gl.getShaderInfoLog(s), '\n', src);
+      throw new Error(gl.getShaderInfoLog(s));
+    }
+    return s;
+  }
+  function prog(fragSrc){
+    const p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fragSrc));
+    gl.linkProgram(p);
+    if(!gl.getProgramParameter(p, gl.LINK_STATUS)){
+      console.error('Link error:', gl.getProgramInfoLog(p));
+      throw new Error(gl.getProgramInfoLog(p));
+    }
+    // cache uniform locations lazily
+    p._u = {};
+    p.u = function(name){
+      if(!(name in p._u)) p._u[name] = gl.getUniformLocation(p, name);
+      return p._u[name];
+    };
+    return p;
+  }
+
+  let sceneProg, brightProg, blurProg, compProg;
+  try{
+    sceneProg  = prog(SCENE_FRAG);
+    brightProg = prog(BRIGHT_FRAG);
+    blurProg   = prog(BLUR_FRAG);
+    compProg   = prog(COMP_FRAG);
+  }catch(e){
+    fatal.textContent = 'Visual engine failed to start: ' + e.message;
+    fatal.style.display = 'grid';
+    return;
+  }
+
+  const vao = gl.createVertexArray(); // empty VAO (verts come from gl_VertexID)
+
+  function makeTarget(w, h){
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    return { tex, fbo, w, h };
+  }
+
+  let RW=2, RH=2, BW=1, BH=1;       // render res, bloom res
+  let baseW=2, baseH=2;             // resolution before adaptive scaling
+  let renderScale = 1.0;            // dynamic-quality multiplier (auto-tunes to the GPU)
+  let sceneT, bloomA, bloomB;
+
+  function allocTargets(){
+    if(sceneT){ gl.deleteTexture(sceneT.tex); gl.deleteFramebuffer(sceneT.fbo); }
+    if(bloomA){ gl.deleteTexture(bloomA.tex); gl.deleteFramebuffer(bloomA.fbo); }
+    if(bloomB){ gl.deleteTexture(bloomB.tex); gl.deleteFramebuffer(bloomB.fbo); }
+    sceneT = makeTarget(RW, RH);
+    bloomA = makeTarget(BW, BH);
+    bloomB = makeTarget(BW, BH);
+  }
+
+  function applySize(){
+    RW = Math.max(2, Math.round(baseW * renderScale));
+    RH = Math.max(2, Math.round(baseH * renderScale));
+    BW = Math.max(1, Math.round(RW/3));
+    BH = Math.max(1, Math.round(RH/3));
+    cvs.width = RW; cvs.height = RH;
+    cvs.style.width = '100%'; cvs.style.height = '100%';
+    allocTargets();
+  }
+  function resize(){
+    const maxW = 1366;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.0);
+    let w = Math.round(Math.min(window.innerWidth * dpr, maxW));
+    let h = Math.round(w * (window.innerHeight / window.innerWidth));
+    baseW = Math.max(2, w); baseH = Math.max(2, h);
+    applySize();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function drawFull(){ gl.bindVertexArray(vao); gl.drawArrays(gl.TRIANGLES, 0, 3); }
+
+  /* ============================================================
+     COLORWAYS  (IQ cosine palettes: a + b*cos(2pi(c*t + d)))
+     We smoothly tween between these "throughout the night".
+     ============================================================ */
+  // 4-stop multicolor gradients. Neon-forward, but capped away from white.
+  const PALETTES = [
+    { name:'electric blue', c0:[0.03,0.06,0.18], c1:[0.10,0.24,0.72], c2:[0.02,0.80,1.00], c3:[0.56,0.22,0.98] },
+    { name:'violet rave',   c0:[0.07,0.02,0.18], c1:[0.30,0.06,0.68], c2:[0.92,0.24,0.98], c3:[0.04,0.82,1.00] },
+    { name:'neon ember',    c0:[0.11,0.03,0.02], c1:[0.60,0.10,0.02], c2:[1.00,0.42,0.04], c3:[1.00,0.04,0.56] },
+    { name:'woods',         c0:[0.02,0.08,0.03], c1:[0.14,0.40,0.10], c2:[0.98,0.70,0.14], c3:[0.10,0.96,0.38] },
+    { name:'cyan glow',     c0:[0.02,0.08,0.12], c1:[0.04,0.42,0.54], c2:[0.12,0.94,0.98], c3:[0.18,0.18,1.00] },
+    { name:'afterhours',    c0:[0.10,0.02,0.12], c1:[0.46,0.04,0.30], c2:[1.00,0.18,0.54], c3:[0.18,0.18,1.00] },
+    { name:'laser lime',    c0:[0.05,0.10,0.02], c1:[0.20,0.52,0.02], c2:[0.86,1.00,0.10], c3:[0.00,1.00,0.76] },
+    { name:'teal pulse',    c0:[0.02,0.08,0.09], c1:[0.02,0.34,0.34], c2:[0.08,0.94,0.78], c3:[0.48,0.18,1.00] },
+    { name:'hot coral',     c0:[0.12,0.04,0.04], c1:[0.60,0.12,0.08], c2:[1.00,0.40,0.18], c3:[1.00,0.08,0.82] },
+    { name:'red velvet',    c0:[0.10,0.02,0.04], c1:[0.46,0.02,0.12], c2:[0.98,0.12,0.26], c3:[0.78,0.04,1.00] },
+    { name:'pink static',   c0:[0.10,0.03,0.10], c1:[0.50,0.06,0.34], c2:[1.00,0.28,0.78], c3:[0.04,0.90,1.00] },
+    { name:'deep sea',      c0:[0.02,0.05,0.12], c1:[0.02,0.20,0.40], c2:[0.06,0.70,1.00], c3:[0.06,1.00,0.74] },
+    { name:'mono ice',      c0:[0.04,0.06,0.10], c1:[0.20,0.30,0.42], c2:[0.62,0.82,0.98], c3:[0.92,0.98,1.00] },
+    { name:'ultraviolet',   c0:[0.06,0.02,0.16], c1:[0.26,0.10,0.62], c2:[0.55,0.30,1.00], c3:[0.10,0.60,1.00] },
+  ];
+  function lerp(a,b,t){ return a+(b-a)*t; }
+  function lerp3(A,B,t){ return [lerp(A[0],B[0],t), lerp(A[1],B[1],t), lerp(A[2],B[2],t)]; }
+  function easeIO(t){ return t*t*(3-2*t); }
+
+  let palToIdx = 0;
+  let palFrom = PALETTES[0], palTo = PALETTES[0];
+  let cur = { c0:[...palFrom.c0], c1:[...palFrom.c1], c2:[...palFrom.c2], c3:[...palFrom.c3] };
+  let palTweenStart = -999, palTweenDur = 6.0;
+  const PAL_DWELL = 42.0; // seconds each colorway holds before next
+  let nextPalAt = PAL_DWELL;
+  let autoPalette = true;
+  let paletteSubset = null;   // a look can pin a cohesive set of colorways
+
+  function startPaletteTween(idx){
+    palFrom = { c0:[...cur.c0], c1:[...cur.c1], c2:[...cur.c2], c3:[...cur.c3] };
+    if(idx == null){
+      if(paletteSubset && paletteSubset.length){
+        const pos = paletteSubset.indexOf(palToIdx);
+        palToIdx = paletteSubset[(pos >= 0 ? pos + 1 : 0) % paletteSubset.length];
+      }else{
+        palToIdx = (palToIdx + 1) % PALETTES.length;
+      }
+    }else{
+      palToIdx = idx;
+    }
+    palTo = PALETTES[palToIdx];
+    palTweenStart = clock;
+    toast('colorway · ' + palTo.name);
+  }
+  function updatePalette(){
+    const t = easeIO(Math.min(1, (clock - palTweenStart)/palTweenDur));
+    cur.c0 = lerp3(palFrom.c0, palTo.c0, t);
+    cur.c1 = lerp3(palFrom.c1, palTo.c1, t);
+    cur.c2 = lerp3(palFrom.c2, palTo.c2, t);
+    cur.c3 = lerp3(palFrom.c3, palTo.c3, t);
+  }
+
+  /* ============================================================
+     SCENES (crossfade in-shader, no hard cuts)
+     ============================================================ */
+  const SCENE_NAMES = ['tunnel','kaleido','plasma','grid','bars','prism','ribbons','pulse','lasers','smoke','aurora','interference','comets','cathedral'];
+  const CURATED_LOOP_ORDER = [2, 8, 10, 6, 11, 4, 12, 1, 13, 7, 5, 3, 9, 0];
+  const CURATED_LOOP_SELECTION = [2, 8, 10, 6, 11, 4, 12, 13, 7, 5];
+  const sceneLoopEnabled = SCENE_NAMES.map(() => true);
+  const sceneMenuToggle = document.getElementById('sceneMenuToggle');
+  const sceneMenuPanel = document.getElementById('sceneMenuPanel');
+  const sceneMenuList = document.getElementById('sceneMenuList');
+  const sceneMenuAllOn = document.getElementById('sceneMenuAllOn');
+  const sceneMenuCurated = document.getElementById('sceneMenuCurated');
+  const sceneMenuClose = document.getElementById('sceneMenuClose');
+  let sceneMenuOpen = false;
+  let sceneA = 2, sceneB = 2, blend = 0, blendEased = 0;   // start on plasma
+  let transitioning = false, transStart = 0;
+  let TRANS_DUR = 3.2;     // long, silky crossfade (set per-look)
+  let SCENE_DWELL = 22.0;  // seconds per scene (set per-look)
+  let nextSceneAt = SCENE_DWELL;
+  let autoScene = true;
+
+  function setSceneMenuOpen(open){
+    sceneMenuOpen = open;
+    sceneMenuPanel.classList.toggle('open', open);
+  }
+  function getLoopScenes(){
+    return CURATED_LOOP_ORDER.filter(idx => sceneLoopEnabled[idx]);
+  }
+  function setLoopEnabled(indices){
+    sceneLoopEnabled.fill(false);
+    indices.forEach(idx => { if(idx >= 0 && idx < sceneLoopEnabled.length) sceneLoopEnabled[idx] = true; });
+    if(!sceneLoopEnabled.some(Boolean)) sceneLoopEnabled[2] = true;
+    renderSceneMenu();
+  }
+  function toggleSceneInLoop(idx){
+    const activeCount = sceneLoopEnabled.filter(Boolean).length;
+    if(sceneLoopEnabled[idx] && activeCount <= 1){
+      toast('loop · keep one');
+      return;
+    }
+    sceneLoopEnabled[idx] = !sceneLoopEnabled[idx];
+    renderSceneMenu();
+    toast(`loop · ${sceneLoopEnabled[idx] ? 'add ' : 'remove '}${SCENE_NAMES[idx]}`);
+  }
+  function renderSceneMenu(){
+    sceneMenuList.innerHTML = '';
+    for(let i=0;i<SCENE_NAMES.length;i++){
+      const row = document.createElement('div');
+      row.className = 'sceneRow';
+
+      const preview = document.createElement('button');
+      preview.type = 'button';
+      preview.className = 'scenePreview' + ((transitioning ? sceneB : sceneA) === i ? ' current' : '');
+      preview.dataset.preview = String(i);
+      preview.innerHTML = `<span class="scenePreviewLabel">${SCENE_NAMES[i]}</span><span class="scenePreviewSub">scene ${i+1}</span>`;
+
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'sceneLoopToggle' + (sceneLoopEnabled[i] ? ' active' : '');
+      toggle.dataset.toggle = String(i);
+      toggle.textContent = sceneLoopEnabled[i] ? 'In Loop' : 'Muted';
+
+      row.appendChild(preview);
+      row.appendChild(toggle);
+      sceneMenuList.appendChild(row);
+    }
+  }
+  sceneMenuToggle.addEventListener('click', () => setSceneMenuOpen(!sceneMenuOpen));
+  sceneMenuClose.addEventListener('click', () => setSceneMenuOpen(false));
+  sceneMenuAllOn.addEventListener('click', () => {
+    sceneLoopEnabled.fill(true);
+    renderSceneMenu();
+    toast('loop · all scenes');
+  });
+  sceneMenuCurated.addEventListener('click', () => {
+    setLoopEnabled(CURATED_LOOP_SELECTION);
+    toast('loop · curated');
+  });
+  sceneMenuList.addEventListener('click', (e) => {
+    const previewBtn = e.target.closest('[data-preview]');
+    if(previewBtn){
+      const idx = Number(previewBtn.dataset.preview);
+      gotoScene(idx);
+      nextSceneAt = clock + SCENE_DWELL;
+      renderSceneMenu();
+      return;
+    }
+    const toggleBtn = e.target.closest('[data-toggle]');
+    if(toggleBtn){
+      toggleSceneInLoop(Number(toggleBtn.dataset.toggle));
+    }
+  });
+  document.addEventListener('pointerdown', (e) => {
+    if(!sceneMenuOpen) return;
+    if(sceneMenuPanel.contains(e.target) || sceneMenuToggle.contains(e.target)) return;
+    setSceneMenuOpen(false);
+  });
+  renderSceneMenu();
+
+  function gotoScene(idx){
+    if(idx === sceneA || transitioning) return;   // ignore overlap → always smooth
+    sceneB = idx;
+    transitioning = true;
+    transStart = clock;
+    toast('scene · ' + SCENE_NAMES[idx]);
+    renderSceneMenu();
+  }
+  function nextScene(){ gotoScene((sceneA + 1) % SCENE_NAMES.length); }
+  function autoNextScene(){
+    const loopScenes = getLoopScenes();
+    if(!loopScenes.length) return;
+    const current = transitioning ? sceneB : sceneA;
+    const idx = loopScenes.indexOf(current);
+    const next = loopScenes[(idx >= 0 ? idx + 1 : 0) % loopScenes.length];
+    if(next === current && loopScenes.length === 1){
+      nextSceneAt = clock + SCENE_DWELL;
+      return;
+    }
+    gotoScene(next);
+  }
+  function updateScene(){
+    if(transitioning){
+      blend = Math.min(1, (clock - transStart)/TRANS_DUR);
+      blendEased = blend*blend*blend*(blend*(blend*6.0 - 15.0) + 10.0);  // smootherstep
+      if(blend >= 1){
+        sceneA = sceneB; blend = 0; blendEased = 0; transitioning = false;
+        nextSceneAt = clock + SCENE_DWELL;
+        renderSceneMenu();
+      }
+    }
+  }
+
+  /* ============================================================
+     LOOKS — togglable style presets.
+     Each Look bundles a full post-processing profile, a curated scene
+     set, motion speed, cut timing, and a cohesive palette family.
+     ============================================================ */
+  const LOOKS = [
+    // soft flowing neon (the dreamy stuff Karl likes) — gentle, bloomy, no edge/posterize
+    { name:'FLOW',    scenes:[2,10,9,6,11,7], dwell:24, trans:3.4, palettes:[4,7,0,11,5],
+      post:{ sharp:0.34, bloom:0.64, sat:1.34, contrast:1.05, black:0.00, bands:0, edge:0.00, ca:1.0, vig:1.00, strobe:0.00, grit:0.18, speed:0.60 } },
+    // James Hype — sharp, punchy, fast cuts, light outline, mild strobe
+    { name:'KINETIC', scenes:[4,8,3,5,11],    dwell:12, trans:1.8, palettes:[0,4,1,13],
+      post:{ sharp:0.85, bloom:0.42, sat:1.16, contrast:1.22, black:0.06, bands:0, edge:0.55, ca:1.1, vig:1.05, strobe:0.22, grit:0.14, speed:0.94 } },
+    // Mau P techno — dark, hypnotic, slow, posterized, crushed blacks, no grit
+    { name:'MINIMAL', scenes:[5,11,13,1,0],   dwell:32, trans:3.0, palettes:[12,4,7,13],
+      post:{ sharp:0.60, bloom:0.30, sat:0.92, contrast:1.30, black:0.12, bands:5, edge:0.32, ca:0.6, vig:1.20, strobe:0.00, grit:0.00, speed:0.42 } },
+    // Guetta festival — saturated, bloomy, energetic, strobe on peaks
+    { name:'RAVE',    scenes:[0,2,12,7,8,10], dwell:16, trans:2.4, palettes:[1,8,0,10,6],
+      post:{ sharp:0.45, bloom:0.88, sat:1.50, contrast:1.10, black:0.02, bands:0, edge:0.00, ca:1.3, vig:0.90, strobe:0.32, grit:0.18, speed:0.82 } },
+    // Skrillex — gritty, glitchy, heavy RGB split, posterize, scanlines
+    { name:'GRIT',    scenes:[4,9,11,12,5],   dwell:14, trans:1.6, palettes:[2,9,5,1],
+      post:{ sharp:0.70, bloom:0.40, sat:1.12, contrast:1.26, black:0.10, bands:6, edge:0.50, ca:2.4, vig:1.10, strobe:0.40, grit:0.85, speed:0.74 } },
+    // graphic ink / line-art — maximum sharp, strong outline + posterize, low sat
+    { name:'INK',     scenes:[5,11,3,13,4,1], dwell:18, trans:2.2, palettes:[12,0,4],
+      post:{ sharp:1.00, bloom:0.26, sat:0.55, contrast:1.42, black:0.14, bands:4, edge:1.00, ca:0.8, vig:1.15, strobe:0.14, grit:0.30, speed:0.58 } },
+  ];
+  const post   = { ...LOOKS[0].post };   // live (lerped) post params
+  const postTo = { ...LOOKS[0].post };   // target the live params chase
+  let currentLook = 0;
+  let gritMul = 1;   // S key mutes/unmutes the active look's grit
+
+  const lookRow = document.getElementById('lookRow');
+  function renderLookRow(){
+    if(!lookRow) return;
+    lookRow.innerHTML = '';
+    LOOKS.forEach((L, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'lookBtn' + (i === currentLook ? ' active' : '');
+      b.dataset.look = String(i);
+      b.textContent = L.name;
+      lookRow.appendChild(b);
+    });
+  }
+  function applyLook(idx, snap){
+    currentLook = ((idx % LOOKS.length) + LOOKS.length) % LOOKS.length;
+    const L = LOOKS[currentLook];
+    Object.assign(postTo, L.post);
+    if(snap) Object.assign(post, L.post);
+    SCENE_DWELL = L.dwell;
+    TRANS_DUR = L.trans;
+    paletteSubset = (L.palettes && L.palettes.length) ? L.palettes : null;
+    setLoopEnabled(L.scenes);
+    if(paletteSubset) startPaletteTween(paletteSubset[0]);
+    gotoScene(L.scenes[0]);
+    nextSceneAt = clock + SCENE_DWELL;
+    renderLookRow();
+    if(!snap) toast('look · ' + L.name);
+  }
+  function cycleLook(dir){ applyLook(currentLook + (dir || 1)); }
+  if(lookRow){
+    lookRow.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-look]');
+      if(btn) applyLook(Number(btn.dataset.look));
+    });
+  }
+  renderLookRow();
+
+  /* ============================================================
+     ENERGY  (fake "musical" dynamics — no audio needed)
+     layered LFOs + periodic build/drop so it breathes & surges
+     ============================================================ */
+  let energySmooth = 0.5;
+  function energyTarget(t){
+    // slow, continuous swell — keeps it breathing with no in/out pumping or hard drops
+    let e = 0.5 + 0.18*Math.sin(t*0.16) + 0.10*Math.sin(t*0.071 + 1.3);
+    return Math.max(0, Math.min(1, e));
+  }
+  let micReactive = false;
+  let micBooted = false;
+  let micCtx = null;
+  let micAnalyser = null;
+  let micStream = null;
+  let micFreq = null;
+  let micLevel = 0.0;
+  let micPeak = 0.0;
+  const LOCAL_MIC_URL = 'http://127.0.0.1:8123/index.html?mic=1';
+  const micHud = document.getElementById('micHud');
+  const micHudFill = document.getElementById('micHudFill');
+  const micHudState = document.getElementById('micHudState');
+
+  function updateMicHud(level){
+    micHud.classList.add('show');
+    micHudState.textContent = micReactive ? 'live' : 'off';
+    micHudFill.style.width = `${Math.round(Math.max(0, Math.min(1, level)) * 100)}%`;
+  }
+
+  function stopMicReactive(){
+    micReactive = false;
+    if(micStream){
+      micStream.getTracks().forEach(track => track.stop());
+      micStream = null;
+    }
+    if(micCtx){
+      micCtx.close().catch(()=>{});
+      micCtx = null;
+    }
+    micAnalyser = null;
+    micFreq = null;
+    micBooted = false;
+    micLevel = 0.0;
+    micPeak = 0.0;
+    updateMicHud(0);
+  }
+
+  async function enableMicReactive(){
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      toast('mic · unavailable');
+      return;
+    }
+    if(micReactive && micAnalyser){
+      toast('mic · already on');
+      return;
+    }
+    try{
+      if(!micBooted){
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio:{
+            echoCancellation:false,
+            noiseSuppression:false,
+            autoGainControl:false
+          }
+        });
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if(!AC) throw new Error('AudioContext unavailable');
+        micCtx = new AC();
+        const source = micCtx.createMediaStreamSource(micStream);
+        micAnalyser = micCtx.createAnalyser();
+        micAnalyser.fftSize = 512;
+        micAnalyser.smoothingTimeConstant = 0.72;
+        micFreq = new Uint8Array(micAnalyser.frequencyBinCount);
+        source.connect(micAnalyser);
+        micBooted = true;
+      }
+      if(micCtx && micCtx.state === 'suspended') await micCtx.resume();
+      micReactive = true;
+      toast('mic reactive · on');
+    }catch(err){
+      stopMicReactive();
+      toast('mic · blocked');
+      console.warn('Mic reactive failed:', err);
+    }
+  }
+
+  async function toggleMicReactive(){
+    if(location.protocol === 'file:'){
+      toast('mic · switching to localhost');
+      location.href = LOCAL_MIC_URL;
+      return;
+    }
+    if(micReactive){
+      stopMicReactive();
+      toast('mic reactive · off');
+    }else{
+      await enableMicReactive();
+    }
+  }
+
+  function micEnergyTarget(t){
+    const base = energyTarget(t) * 0.34;   // keep ambient motion even in a quiet room
+    if(!micReactive || !micAnalyser || !micFreq){
+      updateMicHud(0);
+      return base;
+    }
+    micAnalyser.getByteFrequencyData(micFreq);
+    const bins = micFreq.length;
+    let low = 0, mid = 0, high = 0;
+    let lowN = 0, midN = 0, highN = 0;
+    for(let i=0;i<bins;i++){
+      const v = micFreq[i] / 255;
+      if(i < 12){ low += v; lowN++; }
+      else if(i < 56){ mid += v; midN++; }
+      else { high += v; highN++; }
+    }
+    low = lowN ? low / lowN : 0;
+    mid = midN ? mid / midN : 0;
+    high = highN ? high / highN : 0;
+    const raw = low*0.90 + mid*0.48 + high*0.22;
+    const gated = Math.max(0, raw - 0.035);
+    micPeak = Math.max(gated, micPeak * 0.985 + 0.015);
+    const normalized = Math.min(1, gated / Math.max(0.10, micPeak * 0.72));
+    const transient = Math.max(0, normalized - micLevel);
+    micLevel += (normalized - micLevel) * 0.44;
+    updateMicHud(Math.max(micLevel, transient * 0.9));
+    return Math.max(0, Math.min(1, base + micLevel*1.15 + transient*1.05));
+  }
+
+  /* ============================================================
+     LOGO control
+     ============================================================ */
+  const logoInner = document.getElementById('logoInner');
+  const logoTextLayer = document.getElementById('logoTextLayer');
+  const logoImgLayer  = document.getElementById('logoImgLayer');
+  const logoImg   = document.getElementById('logoImg');
+  let showingText = true;
+  let logoAuto = true;
+  const LOGO_INTERVAL = 10000;
+  const LOGO_FADE_SEC = 1.1;
+  const LOGO_GLOW_SWAP_SEC = 0.38;
+  const LOGO_GLOW_FREEZE_SEC = 0.55;
+  let logoFreezeUntil = 0;   // pause glow-color/glitch updates while a logo fades in
+  let cssLast = -1;          // throttle clock for all CSS-variable writes
+  let logoGlowTimer = null;
+
+  function setLogo(text){
+    showingText = text;
+    logoFreezeUntil = clock + LOGO_GLOW_FREEZE_SEC;   // hold the glow only through the riskiest part of the fade
+    clearTimeout(logoGlowTimer);
+    if(text){
+      logoImg.classList.remove('glowSettling');
+    }else{
+      logoImg.classList.add('glowSettling');
+      logoGlowTimer = setTimeout(() => logoImg.classList.remove('glowSettling'), LOGO_GLOW_SWAP_SEC * 1000);
+    }
+    logoTextLayer.className = 'layer ' + (text ? 'shown' : 'hidden');
+    logoImgLayer.className  = 'layer ' + (text ? 'hidden' : 'shown');
+  }
+  function flipLogo(){ setLogo(!showingText); }
+
+  // preload the Tourner font so the KRL text paints in the right face from the start
+  if(document.fonts && document.fonts.load) document.fonts.load('64px "Tourner"').catch(()=>{});
+
+  // load user PNG; if absent, generate a placeholder emblem so the flip still demos
+  function placeholderLogo(){
+    const c = document.createElement('canvas');
+    c.width = 600; c.height = 600;
+    const x = c.getContext('2d');
+    x.translate(300,300);
+    const grad = x.createLinearGradient(-200,-200,200,200);
+    grad.addColorStop(0,'#ff2d75'); grad.addColorStop(0.5,'#8a2be2'); grad.addColorStop(1,'#00e5ff');
+    x.lineWidth = 18; x.strokeStyle = grad;
+    x.beginPath(); x.arc(0,0,230,0,Math.PI*2); x.stroke();
+    x.lineWidth = 4; x.globalAlpha = 0.7;
+    x.beginPath(); x.arc(0,0,205,0,Math.PI*2); x.stroke();
+    x.globalAlpha = 1;
+    x.fillStyle = '#fff';
+    x.font = '900 200px "Arial Black", Arial, sans-serif';
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillText('KRL', 0, 14);
+    return c.toDataURL('image/png');
+  }
+  logoImg.addEventListener('error', () => { logoImg.src = placeholderLogo(); }, { once:true });
+  logoImg.src = 'logo.png';
+
+  function glitch(force = false){
+    if(!showingText) return;                 // never glitch the Woods PNG logo
+    if(!force && clock < logoFreezeUntil) return;
+    logoInner.classList.remove('glitch');
+    void logoInner.offsetWidth; // reflow to restart animation
+    logoInner.classList.add('glitch');
+    setTimeout(() => logoInner.classList.remove('glitch'), 280);
+  }
+
+  let logoTimer = setInterval(() => { if(logoAuto) flipLogo(); }, LOGO_INTERVAL);
+  let glitchTimer = null;
+  function scheduleGlitch(){
+    const delay = 6000 + Math.random()*9000;
+    glitchTimer = setTimeout(() => { glitch(); scheduleGlitch(); }, delay);
+  }
+  scheduleGlitch();
+
+  /* ============================================================
+     HUD
+     ============================================================ */
+  const help = document.getElementById('help');
+  const toastEl = document.getElementById('toast');
+  const fpsEl = document.getElementById('fpsHud');
+  let toastTimer = null;
+  let fpsAccum = 0, fpsFrames = 0, fps = 60, lastScaleAt = 0, fpsShown = true;
+  function toast(msg){
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1400);
+  }
+  setTimeout(() => help.classList.add('fade'), 6500);
+  const bootParams = new URLSearchParams(location.search);
+  if(bootParams.get('mic') === '1'){
+    setTimeout(() => {
+      enableMicReactive();
+      history.replaceState(null, '', location.pathname);
+    }, 250);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    switch(e.key.toLowerCase()){
+      case 'f':
+        if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+        else document.exitFullscreen().catch(()=>{});
+        break;
+      case ' ': e.preventDefault(); nextScene(); nextSceneAt = clock + SCENE_DWELL; break;
+      case 'c': startPaletteTween(); nextPalAt = clock + PAL_DWELL; break;
+      case 'v': setSceneMenuOpen(!sceneMenuOpen); break;
+      case 'l': flipLogo(); break;
+      case 'g': glitch(true); break;
+      case 'm': toggleMicReactive(); break;
+      case 's': gritMul = gritMul > 0.5 ? 0 : 1; toast('grit · ' + (gritMul ? 'on' : 'off')); break;
+      case 'x': cycleLook(1); break;
+      case 'p': fpsShown = !fpsShown; fpsEl.classList.toggle('hidden', !fpsShown); toast('fps meter · ' + (fpsShown ? 'on' : 'off')); break;
+      case 'a':
+        autoScene = !autoScene; autoPalette = autoScene; logoAuto = autoScene;
+        toast('auto · ' + (autoScene ? 'on' : 'off'));
+        break;
+      case 'h': help.classList.toggle('fade'); break;
+      case '1': gotoScene(0); nextSceneAt = clock + SCENE_DWELL; break;
+      case '2': gotoScene(1); nextSceneAt = clock + SCENE_DWELL; break;
+      case '3': gotoScene(2); nextSceneAt = clock + SCENE_DWELL; break;
+      case '4': gotoScene(3); nextSceneAt = clock + SCENE_DWELL; break;
+      case '5': gotoScene(4); nextSceneAt = clock + SCENE_DWELL; break;
+      case '6': gotoScene(5); nextSceneAt = clock + SCENE_DWELL; break;
+      case '7': gotoScene(6); nextSceneAt = clock + SCENE_DWELL; break;
+      case '8': gotoScene(7); nextSceneAt = clock + SCENE_DWELL; break;
+      case '9': gotoScene(8); nextSceneAt = clock + SCENE_DWELL; break;
+      case '0': gotoScene(9); nextSceneAt = clock + SCENE_DWELL; break;
+      case 'escape': setSceneMenuOpen(false); break;
+    }
+  });
+
+  // hide cursor when idle
+  let cursorTimer = null;
+  window.addEventListener('mousemove', () => {
+    document.body.classList.add('show-cursor');
+    clearTimeout(cursorTimer);
+    cursorTimer = setTimeout(() => document.body.classList.remove('show-cursor'), 2000);
+  });
+
+  /* ============================================================
+     RENDER LOOP  (single rAF, delta-timed, never reloads)
+     ============================================================ */
+  let clock = 0;          // seconds (visual time, pausable-safe)
+  let last = performance.now();
+  applyLook(0, true);     // boot into the FLOW look (snaps post params, curates the loop)
+
+  function render(now){
+    const rawDt = (now - last) / 1000;
+    last = now;
+    let dt = rawDt > 0.1 ? 0.1 : rawDt;  // clamp big gaps (tab refocus) → no jumps
+    clock += dt;
+
+    // ---- fps meter + adaptive resolution (auto-tunes internal render size to the GPU) ----
+    if(rawDt < 0.25){ fpsAccum += rawDt; fpsFrames++; }   // ignore tab-refocus spikes
+    if(fpsAccum >= 0.5){
+      fps = fpsFrames / fpsAccum;
+      fpsAccum = 0; fpsFrames = 0;
+      if(clock - lastScaleAt > 1.5){
+        if(fps < 50 && renderScale > 0.45){ renderScale = Math.max(0.45, renderScale - 0.12); applySize(); lastScaleAt = clock; }
+        else if(fps > 58 && renderScale < 1.0){ renderScale = Math.min(1.0, renderScale + 0.10); applySize(); lastScaleAt = clock; }
+      }
+      if(fpsShown) fpsEl.textContent = Math.round(fps) + ' fps · ' + Math.round(renderScale*100) + '% res';
+    }
+
+    // energy
+    const target = micEnergyTarget(clock);
+    energySmooth += (target - energySmooth) * Math.min(1, dt*(micReactive ? 4.4 : 1.2));
+    const E = energySmooth;
+
+    // ease post-processing params toward the active look (smooth style switches)
+    const pk = Math.min(1, dt*4.0);
+    for(const k in postTo){ post[k] += (postTo[k] - post[k]) * pk; }
+
+    // scheduling
+    if(autoScene && !transitioning && clock >= nextSceneAt) autoNextScene();
+    updateScene();
+    if(autoPalette && clock >= nextPalAt){ startPaletteTween(); nextPalAt = clock + PAL_DWELL; }
+    updatePalette();
+
+    // drive logo CSS. Accent colors feed the glow shadows/filters, so writing them
+    // every frame forces glow repaints that flicker during a crossfade. Update them
+    // at ~11fps, and freeze them entirely while a logo is fading in.
+    // throttle ALL CSS-variable writes (~13fps) — cuts main-thread style/paint churn on weak Macs
+    if(clock - cssLast > 0.075){
+      cssLast = clock;
+      const root = document.documentElement.style;
+      root.setProperty('--energy', E.toFixed(3));
+      root.setProperty('--logoScale', (1 + E*0.035).toFixed(4));
+      if(clock > logoFreezeUntil){   // hold the glow colour steady through a logo fade (anti-flicker)
+        const acc = cur.c3, acc2 = cur.c2;   // glow tints from the colorway's bright stops
+        const to255 = v => Math.max(0, Math.min(255, Math.round(v*255)));
+        const accRgb = `${to255(acc[0])},${to255(acc[1])},${to255(acc[2])}`;
+        root.setProperty('--accent',  `rgb(${accRgb})`);
+        root.setProperty('--accentSoft', `rgba(${accRgb},0.22)`);
+        root.setProperty('--accent2', `rgb(${to255(acc2[0])},${to255(acc2[1])},${to255(acc2[2])})`);
+      }
+    }
+
+    // ---- PASS 1: scene -> sceneT ----
+    gl.useProgram(sceneProg);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, sceneT.fbo);
+    gl.viewport(0,0,RW,RH);
+    gl.uniform2f(sceneProg.u('u_res'), RW, RH);
+    gl.uniform1f(sceneProg.u('u_time'), clock);
+    gl.uniform1f(sceneProg.u('u_energy'), E);
+    gl.uniform1i(sceneProg.u('u_sceneA'), sceneA);
+    gl.uniform1i(sceneProg.u('u_sceneB'), sceneB);
+    gl.uniform1f(sceneProg.u('u_blend'), blendEased);
+    gl.uniform1f(sceneProg.u('u_speed'), post.speed);
+    gl.uniform3fv(sceneProg.u('u_c0'), cur.c0);
+    gl.uniform3fv(sceneProg.u('u_c1'), cur.c1);
+    gl.uniform3fv(sceneProg.u('u_c2'), cur.c2);
+    gl.uniform3fv(sceneProg.u('u_c3'), cur.c3);
+    drawFull();
+
+    // ---- PASS 2: bright -> bloomA ----
+    gl.useProgram(brightProg);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, bloomA.fbo);
+    gl.viewport(0,0,BW,BH);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, sceneT.tex);
+    gl.uniform1i(brightProg.u('u_tex'), 0);
+    drawFull();
+
+    // ---- PASS 3: blur H (bloomA -> bloomB) ----
+    gl.useProgram(blurProg);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, bloomB.fbo);
+    gl.viewport(0,0,BW,BH);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
+    gl.uniform1i(blurProg.u('u_tex'), 0);
+    gl.uniform2f(blurProg.u('u_dir'), 0.85/BW, 0.0);
+    drawFull();
+
+    // ---- PASS 4: blur V (bloomB -> bloomA) ----
+    gl.bindFramebuffer(gl.FRAMEBUFFER, bloomA.fbo);
+    gl.viewport(0,0,BW,BH);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, bloomB.tex);
+    gl.uniform2f(blurProg.u('u_dir'), 0.0, 0.85/BH);
+    drawFull();
+
+    // ---- PASS 5: composite -> screen ----
+    gl.useProgram(compProg);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0,0,RW,RH);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, sceneT.tex);
+    gl.uniform1i(compProg.u('u_scene'), 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
+    gl.uniform1i(compProg.u('u_bloom'), 1);
+    gl.uniform2f(compProg.u('u_res'), RW, RH);
+    gl.uniform1f(compProg.u('u_time'), clock);
+    gl.uniform1f(compProg.u('u_energy'), E);
+    gl.uniform1f(compProg.u('u_grit'), post.grit * gritMul);
+    gl.uniform1f(compProg.u('u_sharp'), post.sharp);
+    gl.uniform1f(compProg.u('u_bloomAmt'), post.bloom);
+    gl.uniform1f(compProg.u('u_sat'), post.sat);
+    gl.uniform1f(compProg.u('u_contrast'), post.contrast);
+    gl.uniform1f(compProg.u('u_black'), post.black);
+    gl.uniform1f(compProg.u('u_bands'), post.bands);
+    gl.uniform1f(compProg.u('u_edge'), post.edge);
+    gl.uniform1f(compProg.u('u_ca'), post.ca);
+    gl.uniform1f(compProg.u('u_vig'), post.vig);
+    gl.uniform1f(compProg.u('u_strobe'), post.strobe);
+    drawFull();
+
+    requestAnimationFrame(render);
+  }
+  window.addEventListener('beforeunload', stopMicReactive);
+  requestAnimationFrame(render);
+})();
+</script>
+</body>
+</html>
