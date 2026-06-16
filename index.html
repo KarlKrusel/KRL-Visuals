@@ -16,6 +16,7 @@
     --accent: #ffffff;
     --accentSoft: rgba(255,255,255,0.22);
     --accent2: #66e0ff;
+    --logoMaskUrl: none;
   }
   *{ margin:0; padding:0; box-sizing:border-box; }
   html,body{ width:100%; height:100%; overflow:hidden; background:#000; }
@@ -93,22 +94,64 @@
 
   /* ---- Grand Woods PNG logo ---- */
   #logoImg{
+    position:relative;
     width:min(66vw, 92vw);
+    aspect-ratio:2403 / 649;
     max-height:min(42vh, 40vw);
-    object-fit:contain;
+    isolation:isolate;
     filter:
        drop-shadow(0 3px 7px rgba(0,0,0,0.6))
-       drop-shadow(0 0 9px rgba(255,255,255,0.28))
-       drop-shadow(0 0 36px var(--accent));
+       drop-shadow(0 0 10px rgba(255,255,255,0.18))
+       drop-shadow(0 0 18px var(--accentSoft))
+       drop-shadow(0 0 42px var(--accent));
     transition:filter .45s ease;
     user-select:none;
+  }
+  #logoImg::before{
+    content:"";
+    position:absolute; inset:0;
+    background:radial-gradient(circle at 50% 50%, var(--accent2) 0%, var(--accent) 58%, var(--accent) 100%);
+    opacity:0.34;
+    filter:blur(18px);
+    transform:scale(1.035);
+    -webkit-mask-image:var(--logoMaskUrl);
+    mask-image:var(--logoMaskUrl);
+    -webkit-mask-repeat:no-repeat;
+    mask-repeat:no-repeat;
+    -webkit-mask-size:contain;
+    mask-size:contain;
+    -webkit-mask-position:center;
+    mask-position:center;
+  }
+  #logoImgBase,
+  #logoImgTint{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+  }
+  #logoImgBase{
+    object-fit:contain;
+    opacity:0.88;
+    filter:grayscale(1) brightness(1.16) contrast(1.08);
+  }
+  #logoImgTint{
+    background:var(--accent);
+    opacity:0.98;
+    mix-blend-mode:color;
+    -webkit-mask-image:var(--logoMaskUrl);
+    mask-image:var(--logoMaskUrl);
+    -webkit-mask-repeat:no-repeat;
+    mask-repeat:no-repeat;
+    -webkit-mask-size:contain;
+    mask-size:contain;
+    -webkit-mask-position:center;
+    mask-position:center;
   }
   #logoImg.glowSettling{
     filter:
        drop-shadow(0 3px 7px rgba(0,0,0,0.6))
-       drop-shadow(0 0 7px rgba(255,255,255,0.18))
-       drop-shadow(0 0 18px var(--accentSoft))
-       drop-shadow(0 0 30px var(--accentSoft));
+       drop-shadow(0 0 7px rgba(255,255,255,0.12))
+       drop-shadow(0 0 14px var(--accentSoft))
+       drop-shadow(0 0 26px var(--accentSoft));
   }
 
   /* ---- gentle glitch: text-only shimmer, never applied to the Woods PNG ---- */
@@ -406,7 +449,10 @@
         <div class="frostText" id="frostText" data-text="KRL">KRL</div>
       </div>
       <div class="layer hidden" id="logoImgLayer">
-        <img id="logoImg" alt="logo" />
+        <div id="logoImg" aria-label="logo">
+          <img id="logoImgBase" alt="logo" />
+          <div id="logoImgTint" aria-hidden="true"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1374,6 +1420,7 @@
   const logoTextLayer = document.getElementById('logoTextLayer');
   const logoImgLayer  = document.getElementById('logoImgLayer');
   const logoImg   = document.getElementById('logoImg');
+  const logoImgBase = document.getElementById('logoImgBase');
   let showingText = true;
   let logoAuto = true;
   const LOGO_INTERVAL = 10000;
@@ -1421,8 +1468,12 @@
     x.fillText('KRL', 0, 14);
     return c.toDataURL('image/png');
   }
-  logoImg.addEventListener('error', () => { logoImg.src = placeholderLogo(); }, { once:true });
-  logoImg.src = 'logo.png';
+  function setLogoAsset(src){
+    logoImg.style.setProperty('--logoMaskUrl', `url("${src}")`);
+    logoImgBase.src = src;
+  }
+  logoImgBase.addEventListener('error', () => { setLogoAsset(placeholderLogo()); }, { once:true });
+  setLogoAsset('logo.png');
 
   function glitch(force = false){
     if(!showingText) return;                 // never glitch the Woods PNG logo
