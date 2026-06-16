@@ -26,6 +26,14 @@
     cursor:none; /* re-enabled on mouse move */
   }
   body.show-cursor{ cursor:default; }
+  body.ui-hidden #help,
+  body.ui-hidden #toast,
+  body.ui-hidden #micHud,
+  body.ui-hidden #fpsHud,
+  body.ui-hidden #sceneMenuToggle,
+  body.ui-hidden #sceneMenuPanel{
+    display:none !important;
+  }
 
   #gl{
     position:fixed; inset:0;
@@ -44,7 +52,7 @@
   /* soft pad behind logo so it always reads over busy visuals */
   #logoGlowBg{
     position:absolute;
-    width:min(82vw,90vh); height:min(46vw,52vh);
+    width:min(94vw,104vh); height:min(58vw,64vh);
     border-radius:50%;
     background:radial-gradient(ellipse at center,
         rgba(0,0,0,0.52) 0%,
@@ -80,7 +88,7 @@
   .frostText{
     display:inline-block;
     font-family:"Tourner","Arial Black",sans-serif;
-    font-size:min(27vw, 34vh);
+    font-size:min(34vw, 42vh);
     line-height:1;
     white-space:nowrap;
     transform: translateY(var(--krlTrim, 0.097em));   /* visually centre the Tourner caps */
@@ -95,15 +103,16 @@
   /* ---- Grand Woods PNG logo ---- */
   #logoImg{
     position:relative;
-    width:min(66vw, 92vw);
+    width:min(80vw, 95vw);
     aspect-ratio:2403 / 649;
-    max-height:min(42vh, 40vw);
+    max-height:min(51vh, 48vw);
     overflow:visible;
     user-select:none;
   }
   #logoImgCanvas{
-    position:absolute; inset:0;
-    width:100%; height:100%;
+    position:absolute;
+    inset:-18%;
+    width:136%; height:136%;
     display:block;
     user-select:none;
   }
@@ -356,6 +365,48 @@
     color:rgba(255,255,255,0.5); margin-bottom:7px;
   }
   #lookRow{ display:flex; flex-wrap:wrap; gap:7px; }
+  #paletteSection{ margin-bottom:13px; }
+  #paletteSectionLabel{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+    color:rgba(255,255,255,0.5); margin-bottom:7px;
+  }
+  #paletteGrid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(122px, 1fr));
+    gap:7px;
+  }
+  .paletteBtn{
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:8px;
+    background:rgba(255,255,255,0.05);
+    color:#fff;
+    padding:8px;
+    cursor:pointer;
+    text-align:left;
+  }
+  .paletteBtn.active{
+    border-color:rgba(255,255,255,0.34);
+    background:rgba(255,255,255,0.10);
+  }
+  .paletteSwatch{
+    display:block;
+    width:100%;
+    height:18px;
+    border-radius:5px;
+    margin-bottom:7px;
+    border:1px solid rgba(255,255,255,0.10);
+  }
+  .paletteName{
+    display:block;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:#fff;
+    line-height:1.2;
+  }
   .lookBtn{
     border:1px solid rgba(255,255,255,0.16);
     border-radius:999px;
@@ -547,6 +598,10 @@
       <div id="lookSectionLabel">Style — press X to cycle</div>
       <div id="lookRow"></div>
     </div>
+    <div id="paletteSection">
+      <div id="paletteSectionLabel">Colorway selector</div>
+      <div id="paletteGrid"></div>
+    </div>
     <div id="settingsSection">
       <div id="settingsLabel">Timing &amp; color</div>
       <div class="settingRow">
@@ -570,9 +625,19 @@
         <button class="settingToggle" id="shuffleToggle" type="button">Off</button>
       </div>
       <div class="settingRow">
+        <span class="settingName">Scene lock</span>
+        <span></span>
+        <button class="settingToggle" id="sceneLockToggle" type="button">Off</button>
+      </div>
+      <div class="settingRow">
         <span class="settingName">Rainbow wheel</span>
         <span></span>
         <button class="settingToggle" id="rainbowToggle" type="button">Off</button>
+      </div>
+      <div class="settingRow">
+        <span class="settingName">Woods white glow</span>
+        <span></span>
+        <button class="settingToggle" id="woodsWhiteToggle" type="button">Off</button>
       </div>
     </div>
     <div id="sceneMenuActions">
@@ -595,6 +660,7 @@
     <span class="k">S</span> grit
     <span class="k">A</span> auto on/off
     <span class="k">X</span> style
+    <span class="k">U</span> ui
     <span class="k">P</span> fps
     <span class="k">1</span>–<span class="k">0</span> scenes
   </div>
@@ -837,14 +903,40 @@
     return col;
   }
   vec3 sceneSmoke(vec2 uv, float t){
-    vec2 p = uv * 1.35;
-    float n1 = fbm(p*1.8 + vec2(t*0.14, -t*0.09));
-    float n2 = fbm(p*3.2 + vec2(-t*0.08, t*0.12));
-    float cloud = smoothstep(0.22, 0.84, n1*0.72 + n2*0.38);
-    float shafts = pow(max(0.0, sin((uv.x + n2*0.25)*8.0 - t*1.8)), 10.0) * smoothstep(0.7, -0.4, uv.y);
-    vec3 col = palette(0.12 + n1*0.24) * 0.10;
-    col += palette(0.36 + n2*0.20) * cloud * 0.24;
-    col += palette(0.76 + n1*0.10) * shafts * 0.28;
+    vec2 p = uv * vec2(1.18, 1.42);
+    vec2 warpA = vec2(
+      fbm(p*1.7 + vec2(t*0.11, -t*0.07)),
+      fbm(p*1.6 + vec2(-t*0.09, t*0.08))
+    ) - 0.5;
+    vec2 warpB = vec2(
+      fbm(p*3.0 - warpA*1.4 + vec2(t*0.16, t*0.05)),
+      fbm(p.yx*2.8 + warpA*1.2 + vec2(-t*0.12, t*0.10))
+    ) - 0.5;
+    vec2 flow = p + warpA*0.55 + warpB*0.24;
+
+    float body = fbm(flow*1.45 + vec2(0.0, -t*0.11));
+    float curl = fbm(flow*2.8 + vec2(t*0.20, -t*0.14));
+    float detail = fbm(flow*5.4 + vec2(-t*0.28, t*0.18));
+    float smoke = smoothstep(0.26, 0.92, body*0.74 + curl*0.34 - detail*0.10);
+
+    float rise = smoothstep(1.0, -0.65, uv.y);
+    float floorFog = smoothstep(0.24, -0.78, uv.y) * smoothstep(0.12, 0.82, body + curl*0.38);
+
+    float leftLight = smoothstep(0.42, 0.0, length(uv - vec2(-0.74, -0.18 + 0.08*sin(t*0.7))));
+    float rightLight = smoothstep(0.42, 0.0, length(uv - vec2(0.78, -0.10 + 0.09*cos(t*0.8))));
+    float glowPockets = smoothstep(0.60, 0.92, smoke + detail*0.26) * rise;
+
+    float beamA = pow(max(0.0, sin((uv.x*0.86 + warpA.x*0.55)*9.0 - t*1.65)), 11.0) * smoothstep(0.92, -0.18, uv.y);
+    float beamB = pow(max(0.0, sin((uv.x*1.04 - warpB.y*0.48)*8.2 + t*1.42)), 11.0) * smoothstep(0.98, -0.10, uv.y);
+    float beamMask = smoothstep(0.32, 0.78, smoke);
+
+    vec3 col = palette(0.08 + body*0.18 + uv.y*0.05) * 0.10;
+    col += palette(0.22 + curl*0.28 - t*0.015) * smoke * (0.18 + 0.24*rise);
+    col += palette(0.46 + body*0.18 + detail*0.10) * floorFog * 0.32;
+    col += palette(0.78 + curl*0.14) * glowPockets * 0.34;
+    col += palette(0.90 + detail*0.06) * (leftLight + rightLight) * 0.18;
+    col += palette(0.68 + body*0.10) * (beamA + beamB) * beamMask * 0.22;
+    col += palette(0.96) * max(leftLight, rightLight) * smoke * 0.12;
     return col;
   }
   vec3 sceneAurora(vec2 uv, float t){
@@ -1255,6 +1347,7 @@
     { name:'tangerine zap', c0:[0.14,0.05,0.02], c1:[0.90,0.32,0.04], c2:[1.00,0.62,0.10], c3:[0.10,0.92,1.00] },
     { name:'vapor mint',    c0:[0.03,0.12,0.12], c1:[0.06,0.62,0.58], c2:[0.30,1.00,0.84], c3:[1.00,0.30,0.92] },
     { name:'solar flare',   c0:[0.14,0.03,0.05], c1:[0.84,0.10,0.22], c2:[1.00,0.42,0.10], c3:[1.00,0.92,0.16] },
+    { name:'racker',        c0:[0.22,0.00,0.02], c1:[0.92,0.00,0.00], c2:[0.58,0.00,0.54], c3:[0.20,0.00,0.99] },
   ];
   function lerp(a,b,t){ return a+(b-a)*t; }
   function lerp3(A,B,t){ return [lerp(A[0],B[0],t), lerp(A[1],B[1],t), lerp(A[2],B[2],t)]; }
@@ -1282,6 +1375,21 @@
   function rgba255(C, a){
     return `rgba(${C[0]},${C[1]},${C[2]},${a})`;
   }
+  const STATE_KEY = 'krl-vfx-state-v1';
+  function readSavedState(){
+    try{
+      const raw = localStorage.getItem(STATE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    }catch(_){
+      return null;
+    }
+  }
+  function writeSavedState(state){
+    try{
+      localStorage.setItem(STATE_KEY, JSON.stringify(state));
+    }catch(_){}
+  }
+  const savedState = readSavedState();
 
   let palToIdx = 0;
   let palFrom = PALETTES[0], palTo = PALETTES[0];
@@ -1315,6 +1423,8 @@
     }
     palTo = PALETTES[palToIdx];
     palTweenStart = clock;
+    renderPaletteGrid();
+    persistUiState();
     toast('colorway · ' + palTo.name);
   }
   function updatePalette(){
@@ -1345,6 +1455,7 @@
   const sceneMenuToggle = document.getElementById('sceneMenuToggle');
   const sceneMenuPanel = document.getElementById('sceneMenuPanel');
   const sceneMenuList = document.getElementById('sceneMenuList');
+  const paletteGrid = document.getElementById('paletteGrid');
   const sceneMenuAllOn = document.getElementById('sceneMenuAllOn');
   const sceneMenuCurated = document.getElementById('sceneMenuCurated');
   const sceneMenuClose = document.getElementById('sceneMenuClose');
@@ -1356,6 +1467,25 @@
   let userSceneDwell = null;   // null => follow the look; number => user override persists across looks
   let nextSceneAt = SCENE_DWELL;
   let autoScene = true;
+  let sceneLocked = false;
+  function getCurrentSceneIndex(){
+    return transitioning ? sceneB : sceneA;
+  }
+  function persistUiState(){
+    writeSavedState({
+      look: currentLook,
+      palette: palToIdx,
+      scene: getCurrentSceneIndex(),
+      sceneLoopEnabled: [...sceneLoopEnabled],
+      userSceneDwell,
+      palDwell: PAL_DWELL,
+      logoInterval: LOGO_INTERVAL,
+      shuffleMode,
+      rainbowMode,
+      sceneLocked,
+      woodsWhiteMode
+    });
+  }
 
   function setSceneMenuOpen(open){
     sceneMenuOpen = open;
@@ -1369,6 +1499,7 @@
     indices.forEach(idx => { if(idx >= 0 && idx < sceneLoopEnabled.length) sceneLoopEnabled[idx] = true; });
     if(!sceneLoopEnabled.some(Boolean)) sceneLoopEnabled[2] = true;
     renderSceneMenu();
+    persistUiState();
   }
   function toggleSceneInLoop(idx){
     const activeCount = sceneLoopEnabled.filter(Boolean).length;
@@ -1378,6 +1509,7 @@
     }
     sceneLoopEnabled[idx] = !sceneLoopEnabled[idx];
     renderSceneMenu();
+    persistUiState();
     toast(`loop · ${sceneLoopEnabled[idx] ? 'add ' : 'remove '}${SCENE_NAMES[idx]}`);
   }
   function renderSceneMenu(){
@@ -1403,6 +1535,29 @@
       sceneMenuList.appendChild(row);
     }
   }
+  function renderPaletteGrid(){
+    if(!paletteGrid) return;
+    paletteGrid.innerHTML = '';
+    PALETTES.forEach((P, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'paletteBtn' + ((palToIdx === i && !rainbowMode) ? ' active' : '');
+      btn.dataset.palette = String(i);
+      const swatch = document.createElement('span');
+      swatch.className = 'paletteSwatch';
+      swatch.style.background = `linear-gradient(90deg,
+        rgb(${Math.round(P.c0[0]*255)},${Math.round(P.c0[1]*255)},${Math.round(P.c0[2]*255)}) 0%,
+        rgb(${Math.round(P.c1[0]*255)},${Math.round(P.c1[1]*255)},${Math.round(P.c1[2]*255)}) 33%,
+        rgb(${Math.round(P.c2[0]*255)},${Math.round(P.c2[1]*255)},${Math.round(P.c2[2]*255)}) 66%,
+        rgb(${Math.round(P.c3[0]*255)},${Math.round(P.c3[1]*255)},${Math.round(P.c3[2]*255)}) 100%)`;
+      const name = document.createElement('span');
+      name.className = 'paletteName';
+      name.textContent = P.name;
+      btn.appendChild(swatch);
+      btn.appendChild(name);
+      paletteGrid.appendChild(btn);
+    });
+  }
   sceneMenuToggle.addEventListener('click', () => setSceneMenuOpen(!sceneMenuOpen));
   sceneMenuClose.addEventListener('click', () => setSceneMenuOpen(false));
   sceneMenuAllOn.addEventListener('click', () => {
@@ -1424,6 +1579,9 @@
   const logoIntervalVal    = document.getElementById('logoIntervalVal');
   const rainbowToggle      = document.getElementById('rainbowToggle');
   const shuffleToggle      = document.getElementById('shuffleToggle');
+  const sceneLockToggle    = document.getElementById('sceneLockToggle');
+  const woodsWhiteToggle   = document.getElementById('woodsWhiteToggle');
+  let woodsWhiteMode = false;
   function syncSceneIntervalUI(){
     if(!sceneIntervalRange) return;
     sceneIntervalRange.value = String(Math.round(SCENE_DWELL));
@@ -1435,17 +1593,20 @@
       SCENE_DWELL = userSceneDwell;
       sceneIntervalVal.textContent = userSceneDwell + 's';
       nextSceneAt = clock + SCENE_DWELL;
+      persistUiState();
     });
     palIntervalRange.addEventListener('input', () => {
       PAL_DWELL = Number(palIntervalRange.value);
       palIntervalVal.textContent = PAL_DWELL + 's';
       nextPalAt = clock + PAL_DWELL;
+      persistUiState();
     });
     logoIntervalRange.addEventListener('input', () => {
       LOGO_INTERVAL = Number(logoIntervalRange.value) * 1000;
       logoIntervalVal.textContent = logoIntervalRange.value + 's';
       clearInterval(logoTimer);
       logoTimer = setInterval(() => { if(logoAuto) flipLogo(); }, LOGO_INTERVAL);
+      persistUiState();
     });
     rainbowToggle.addEventListener('click', () => {
       rainbowMode = !rainbowMode;
@@ -1456,13 +1617,48 @@
         palTo = PALETTES[palToIdx];
         palTweenStart = clock;
       }
+      renderPaletteGrid();
+      persistUiState();
       toast('rainbow · ' + (rainbowMode ? 'on' : 'off'));
     });
     shuffleToggle.addEventListener('click', () => {
       shuffleMode = !shuffleMode;
       shuffleToggle.classList.toggle('active', shuffleMode);
       shuffleToggle.textContent = shuffleMode ? 'On' : 'Off';
+      persistUiState();
       toast('shuffle · ' + (shuffleMode ? 'on' : 'off'));
+    });
+    sceneLockToggle.addEventListener('click', () => {
+      sceneLocked = !sceneLocked;
+      sceneLockToggle.classList.toggle('active', sceneLocked);
+      sceneLockToggle.textContent = sceneLocked ? 'On' : 'Off';
+      if(sceneLocked) nextSceneAt = Infinity;
+      else nextSceneAt = clock + SCENE_DWELL;
+      persistUiState();
+      toast('scene lock · ' + (sceneLocked ? 'on' : 'off'));
+    });
+    woodsWhiteToggle.addEventListener('click', () => {
+      woodsWhiteMode = !woodsWhiteMode;
+      woodsWhiteToggle.classList.toggle('active', woodsWhiteMode);
+      woodsWhiteToggle.textContent = woodsWhiteMode ? 'On' : 'Off';
+      if(!showingText) renderWoodsLogo(true);
+      persistUiState();
+      toast('woods white · ' + (woodsWhiteMode ? 'on' : 'off'));
+    });
+  }
+  if(paletteGrid){
+    paletteGrid.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-palette]');
+      if(!btn) return;
+      const idx = Number(btn.dataset.palette);
+      if(rainbowMode){
+        rainbowMode = false;
+        rainbowToggle.classList.remove('active');
+        rainbowToggle.textContent = 'Off';
+      }
+      startPaletteTween(idx);
+      nextPalAt = clock + PAL_DWELL;
+      renderPaletteGrid();
     });
   }
   sceneMenuList.addEventListener('click', (e) => {
@@ -1470,7 +1666,7 @@
     if(previewBtn){
       const idx = Number(previewBtn.dataset.preview);
       gotoScene(idx);
-      nextSceneAt = clock + SCENE_DWELL;
+      nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL;
       renderSceneMenu();
       return;
     }
@@ -1485,17 +1681,23 @@
     setSceneMenuOpen(false);
   });
   renderSceneMenu();
+  renderPaletteGrid();
 
   function gotoScene(idx){
     if(idx === sceneA || transitioning) return;   // ignore overlap → always smooth
     sceneB = idx;
     transitioning = true;
     transStart = clock;
+    persistUiState();
     toast('scene · ' + SCENE_NAMES[idx]);
     renderSceneMenu();
   }
   function nextScene(){ gotoScene((sceneA + 1) % SCENE_NAMES.length); }
   function autoNextScene(){
+    if(sceneLocked){
+      nextSceneAt = Infinity;
+      return;
+    }
     const loopScenes = getLoopScenes();
     if(!loopScenes.length) return;
     const current = transitioning ? sceneB : sceneA;
@@ -1518,7 +1720,8 @@
       blendEased = blend*blend*blend*(blend*(blend*6.0 - 15.0) + 10.0);  // smootherstep
       if(blend >= 1){
         sceneA = sceneB; blend = 0; blendEased = 0; transitioning = false;
-        nextSceneAt = clock + SCENE_DWELL;
+        nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL;
+        persistUiState();
         renderSceneMenu();
       }
     }
@@ -1581,8 +1784,9 @@
       gotoScene(L.scenes[0]);
     }                               // a manual style switch keeps the user's selected scenes & current scene
     if(paletteSubset) startPaletteTween(paletteSubset[0]);
-    nextSceneAt = clock + SCENE_DWELL;
+    nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL;
     renderLookRow();
+    persistUiState();
     if(!snap) toast('look · ' + L.name);
   }
   function cycleLook(dir){ applyLook(currentLook + (dir || 1)); }
@@ -1593,6 +1797,78 @@
     });
   }
   renderLookRow();
+  function restoreUiState(){
+    if(!savedState) return;
+    if(Array.isArray(savedState.sceneLoopEnabled) && savedState.sceneLoopEnabled.length === sceneLoopEnabled.length){
+      sceneLoopEnabled.splice(0, sceneLoopEnabled.length, ...savedState.sceneLoopEnabled.map(Boolean));
+      if(!sceneLoopEnabled.some(Boolean)) sceneLoopEnabled[2] = true;
+    }
+    if(typeof savedState.userSceneDwell === 'number' && Number.isFinite(savedState.userSceneDwell)){
+      userSceneDwell = savedState.userSceneDwell;
+      SCENE_DWELL = userSceneDwell;
+      if(sceneIntervalRange){
+        sceneIntervalRange.value = String(Math.round(userSceneDwell));
+        sceneIntervalVal.textContent = Math.round(userSceneDwell) + 's';
+      }
+    }else{
+      syncSceneIntervalUI();
+    }
+    if(typeof savedState.palDwell === 'number' && Number.isFinite(savedState.palDwell)){
+      PAL_DWELL = savedState.palDwell;
+      if(palIntervalRange){
+        palIntervalRange.value = String(Math.round(PAL_DWELL));
+        palIntervalVal.textContent = Math.round(PAL_DWELL) + 's';
+      }
+    }
+    if(typeof savedState.logoInterval === 'number' && Number.isFinite(savedState.logoInterval)){
+      LOGO_INTERVAL = savedState.logoInterval;
+      if(logoIntervalRange){
+        logoIntervalRange.value = String(Math.round(LOGO_INTERVAL / 1000));
+        logoIntervalVal.textContent = Math.round(LOGO_INTERVAL / 1000) + 's';
+      }
+      clearInterval(logoTimer);
+      logoTimer = setInterval(() => { if(logoAuto) flipLogo(); }, LOGO_INTERVAL);
+    }
+    shuffleMode = !!savedState.shuffleMode;
+    rainbowMode = !!savedState.rainbowMode;
+    sceneLocked = !!savedState.sceneLocked;
+    woodsWhiteMode = !!savedState.woodsWhiteMode;
+    if(shuffleToggle){
+      shuffleToggle.classList.toggle('active', shuffleMode);
+      shuffleToggle.textContent = shuffleMode ? 'On' : 'Off';
+    }
+    if(rainbowToggle){
+      rainbowToggle.classList.toggle('active', rainbowMode);
+      rainbowToggle.textContent = rainbowMode ? 'On' : 'Off';
+    }
+    if(sceneLockToggle){
+      sceneLockToggle.classList.toggle('active', sceneLocked);
+      sceneLockToggle.textContent = sceneLocked ? 'On' : 'Off';
+    }
+    if(woodsWhiteToggle){
+      woodsWhiteToggle.classList.toggle('active', woodsWhiteMode);
+      woodsWhiteToggle.textContent = woodsWhiteMode ? 'On' : 'Off';
+    }
+    if(Number.isInteger(savedState.palette) && savedState.palette >= 0 && savedState.palette < PALETTES.length){
+      palToIdx = savedState.palette;
+      palFrom = PALETTES[palToIdx];
+      palTo = PALETTES[palToIdx];
+      cur = { c0:[...palTo.c0], c1:[...palTo.c1], c2:[...palTo.c2], c3:[...palTo.c3] };
+      palTweenStart = -999;
+    }
+    if(Number.isInteger(savedState.scene) && savedState.scene >= 0 && savedState.scene < SCENE_NAMES.length){
+      sceneA = savedState.scene;
+      sceneB = savedState.scene;
+      transitioning = false;
+      blend = 0;
+      blendEased = 0;
+    }
+    nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL;
+    nextPalAt = clock + PAL_DWELL;
+    renderSceneMenu();
+    renderPaletteGrid();
+    renderLookRow();
+  }
 
   /* ============================================================
      ENERGY  (fake "musical" dynamics — no audio needed)
@@ -1850,6 +2126,10 @@
   const logoFxCtx = logoFxCanvas.getContext('2d', { alpha:true, desynchronized:true });
   const logoMaskCanvas = document.createElement('canvas');
   const logoMaskCtx = logoMaskCanvas.getContext('2d', { alpha:true, desynchronized:true });
+  const logoGlowCanvas = document.createElement('canvas');
+  const logoGlowCtx = logoGlowCanvas.getContext('2d', { alpha:true, desynchronized:true });
+  const logoSceneCanvas = document.createElement('canvas');
+  const logoSceneCtx = logoSceneCanvas.getContext('2d', { alpha:false, willReadFrequently:true });
   let showingText = true;
   let logoAuto = true;
   let LOGO_INTERVAL = 10000;   // ms between logo flips (user-adjustable)
@@ -1859,12 +2139,15 @@
   const LOGO_FX_IDLE_FPS = 6;
   const LOGO_FX_TWEEN_FPS = 12;
   const LOGO_FX_MAX_W = 1100;
+  const LOGO_CANVAS_PAD = 0.18;
   let logoFreezeUntil = 0;   // pause glow-color/glitch updates while a logo fades in
   let cssLast = -1;          // throttle clock for all CSS-variable writes
   let logoGlowTimer = null;
   let logoFxLastAt = -999;
   let logoFxLastW = 0, logoFxLastH = 0;
   let logoMaskDirty = true;
+  let logoSceneRgb = [255, 255, 255];
+  let logoSceneLum = 0.5;
   function logoPaletteNow(){
     const to255 = v => Math.max(0, Math.min(255, Math.round(v * 255)));
     const pt = paletteTweenProgress();
@@ -1885,7 +2168,8 @@
     const cssW = Math.round(bounds.width || logoImg.clientWidth || Math.min(window.innerWidth * 0.66, LOGO_FX_MAX_W));
     if(!cssW) return false;
     const dpr = Math.min(window.devicePixelRatio || 1, 1.0);
-    const targetW = Math.min(LOGO_FX_MAX_W, Math.max(520, Math.round(cssW * dpr)));
+    const padScale = 1 + LOGO_CANVAS_PAD * 2;
+    const targetW = Math.min(Math.round(LOGO_FX_MAX_W * padScale), Math.max(520, Math.round(cssW * dpr * padScale)));
     const targetH = Math.max(2, Math.round(targetW * (649 / 2403)));
     if(!force && targetW === logoFxLastW && targetH === logoFxLastH) return false;
     logoFxLastW = targetW;
@@ -1896,12 +2180,16 @@
     logoFxCanvas.height = targetH;
     logoMaskCanvas.width = targetW;
     logoMaskCanvas.height = targetH;
+    logoGlowCanvas.width = targetW;
+    logoGlowCanvas.height = targetH;
     logoImgCtx.imageSmoothingEnabled = true;
     logoImgCtx.imageSmoothingQuality = 'high';
     logoFxCtx.imageSmoothingEnabled = true;
     logoFxCtx.imageSmoothingQuality = 'high';
     logoMaskCtx.imageSmoothingEnabled = true;
     logoMaskCtx.imageSmoothingQuality = 'high';
+    logoGlowCtx.imageSmoothingEnabled = true;
+    logoGlowCtx.imageSmoothingQuality = 'high';
     logoMaskDirty = true;
     return true;
   }
@@ -1910,13 +2198,50 @@
     const w = logoMaskCanvas.width;
     const h = logoMaskCanvas.height;
     if(!w || !h || !logoImgBase.complete || !logoImgBase.naturalWidth) return;
+    const padX = w * LOGO_CANVAS_PAD;
+    const padY = h * LOGO_CANVAS_PAD;
+    const drawW = w - padX * 2;
+    const drawH = h - padY * 2;
     logoMaskCtx.clearRect(0, 0, w, h);
-    logoMaskCtx.drawImage(logoImgBase, 0, 0, w, h);
+    logoMaskCtx.drawImage(logoImgBase, padX, padY, drawW, drawH);
     logoMaskCtx.globalCompositeOperation = 'source-in';
     logoMaskCtx.fillStyle = 'rgba(255,255,255,1)';
     logoMaskCtx.fillRect(0, 0, w, h);
     logoMaskCtx.globalCompositeOperation = 'source-over';
     logoMaskDirty = false;
+  }
+
+  function sampleSceneUnderLogo(){
+    if(!logoSceneCtx || !cvs.width || !cvs.height) return;
+    const bounds = logoImg.getBoundingClientRect();
+    const vw = Math.max(1, window.innerWidth);
+    const vh = Math.max(1, window.innerHeight);
+    const sx = Math.max(0, Math.floor((bounds.left / vw) * cvs.width));
+    const sy = Math.max(0, Math.floor((bounds.top / vh) * cvs.height));
+    const sw = Math.max(1, Math.min(cvs.width - sx, Math.ceil((bounds.width / vw) * cvs.width)));
+    const sh = Math.max(1, Math.min(cvs.height - sy, Math.ceil((bounds.height / vh) * cvs.height)));
+    if(sw <= 0 || sh <= 0) return;
+    const tw = 20;
+    const th = 6;
+    if(logoSceneCanvas.width !== tw || logoSceneCanvas.height !== th){
+      logoSceneCanvas.width = tw;
+      logoSceneCanvas.height = th;
+      logoSceneCtx.imageSmoothingEnabled = true;
+      logoSceneCtx.imageSmoothingQuality = 'low';
+    }
+    logoSceneCtx.clearRect(0, 0, tw, th);
+    logoSceneCtx.drawImage(cvs, sx, sy, sw, sh, 0, 0, tw, th);
+    const pixels = logoSceneCtx.getImageData(0, 0, tw, th).data;
+    let r = 0, g = 0, b = 0;
+    const count = tw * th;
+    for(let i = 0; i < pixels.length; i += 4){
+      r += pixels[i];
+      g += pixels[i + 1];
+      b += pixels[i + 2];
+    }
+    r /= count; g /= count; b /= count;
+    logoSceneRgb = [Math.round(r), Math.round(g), Math.round(b)];
+    logoSceneLum = Math.max(0, Math.min(1, (0.2126*r + 0.7152*g + 0.0722*b) / 255));
   }
 
   function renderWoodsLogo(force = false){
@@ -1931,51 +2256,181 @@
     const w = logoFxCanvas.width;
     const h = logoFxCanvas.height;
     if(logoMaskDirty) rebuildLogoMask();
-    const { c1, c2, c3, edge, tailSoft } = logoPaletteNow();
-    const glowAlpha = clock < logoFreezeUntil ? 0.22 : 0.34;
-    const blurPx = clock < logoFreezeUntil ? 7 : 9;
+    sampleSceneUnderLogo();
+    const { c1, c2, c3, core, edge, hot, tail, tailSoft } = logoPaletteNow();
+    const freezeGlow = clock < logoFreezeUntil;
+    const glowAlpha = freezeGlow ? 0.42 : 0.36;
+    const blurPx = freezeGlow ? 9 : 10;
+    const sceneInf = Math.max(0.08, Math.min(0.26, 0.08 + logoSceneLum * 0.18));
+    const sceneGlow = Math.max(0.10, Math.min(0.30, 0.12 + logoSceneLum * 0.18));
+    const bgTint = mixRgb255(edge, logoSceneRgb, sceneInf);
+    const bgHot = mixRgb255(hot, logoSceneRgb, sceneInf * 0.78);
+    const bgCore = mixRgb255(core, logoSceneRgb, sceneInf * 0.34);
 
     logoFxCtx.clearRect(0, 0, w, h);
-    // Static gradient anchored to the logo bounds, following the active colorway
-    // (c1 -> c2 -> c3). No moving sheen layer, so no bright band sweeps across the mark.
-    const baseGrad = logoFxCtx.createLinearGradient(-w * 0.12, h * 0.14, w * 1.12, h * 0.86);
-    baseGrad.addColorStop(0.00, `rgb(${c1[0]},${c1[1]},${c1[2]})`);
-    baseGrad.addColorStop(0.30, `rgb(${edge[0]},${edge[1]},${edge[2]})`);
-    baseGrad.addColorStop(0.55, `rgb(${c2[0]},${c2[1]},${c2[2]})`);
-    baseGrad.addColorStop(0.80, `rgb(${tailSoft[0]},${tailSoft[1]},${tailSoft[2]})`);
-    baseGrad.addColorStop(1.00, `rgb(${c3[0]},${c3[1]},${c3[2]})`);
-    logoFxCtx.fillStyle = baseGrad;
-    logoFxCtx.fillRect(0, 0, w, h);
+    if(woodsWhiteMode){
+      logoFxCtx.fillStyle = '#ffffff';
+      logoFxCtx.fillRect(0, 0, w, h);
+    }else{
+      // Neon-sign body: darker base plate with a hot illuminated center.
+      const low = mixRgb255(c1, [0, 0, 0], 0.58);
+      const mid = mixRgb255(mixRgb255(bgTint, bgHot, 0.34), [0, 0, 0], 0.18);
+      const bright = mixRgb255(bgHot, [255, 255, 255], 0.12);
+      const tailDim = mixRgb255(tail, [0, 0, 0], 0.30);
+      const baseGrad = logoFxCtx.createLinearGradient(-w * 0.16, h * 0.12, w * 1.08, h * 0.92);
+      baseGrad.addColorStop(0.00, `rgb(${low[0]},${low[1]},${low[2]})`);
+      baseGrad.addColorStop(0.22, `rgb(${bgTint[0]},${bgTint[1]},${bgTint[2]})`);
+      baseGrad.addColorStop(0.48, `rgb(${mid[0]},${mid[1]},${mid[2]})`);
+      baseGrad.addColorStop(0.64, `rgb(${bright[0]},${bright[1]},${bright[2]})`);
+      baseGrad.addColorStop(0.82, `rgb(${tailSoft[0]},${tailSoft[1]},${tailSoft[2]})`);
+      baseGrad.addColorStop(1.00, `rgb(${tailDim[0]},${tailDim[1]},${tailDim[2]})`);
+      logoFxCtx.fillStyle = baseGrad;
+      logoFxCtx.fillRect(0, 0, w, h);
+
+      const topGloss = logoFxCtx.createLinearGradient(0, h * 0.02, 0, h * 0.70);
+      topGloss.addColorStop(0.00, 'rgba(255,255,255,0.30)');
+      topGloss.addColorStop(0.16, `rgba(${bgCore[0]},${bgCore[1]},${bgCore[2]},0.16)`);
+      topGloss.addColorStop(0.46, 'rgba(255,255,255,0.03)');
+      topGloss.addColorStop(1.00, 'rgba(255,255,255,0.00)');
+      logoFxCtx.fillStyle = topGloss;
+      logoFxCtx.fillRect(0, 0, w, h);
+
+      const hotspot = logoFxCtx.createRadialGradient(w * 0.54, h * 0.36, w * 0.03, w * 0.56, h * 0.40, w * 0.46);
+      hotspot.addColorStop(0.00, `rgba(${bright[0]},${bright[1]},${bright[2]},0.34)`);
+      hotspot.addColorStop(0.22, `rgba(${bgHot[0]},${bgHot[1]},${bgHot[2]},0.24)`);
+      hotspot.addColorStop(0.58, `rgba(${bgTint[0]},${bgTint[1]},${bgTint[2]},0.11)`);
+      hotspot.addColorStop(1.00, 'rgba(0,0,0,0)');
+      logoFxCtx.fillStyle = hotspot;
+      logoFxCtx.fillRect(0, 0, w, h);
+
+      const tubeBand = logoFxCtx.createLinearGradient(-w * 0.10, h * 0.30, w * 1.10, h * 0.68);
+      tubeBand.addColorStop(0.00, 'rgba(255,255,255,0.00)');
+      tubeBand.addColorStop(0.18, `rgba(${bgTint[0]},${bgTint[1]},${bgTint[2]},0.06)`);
+      tubeBand.addColorStop(0.50, `rgba(${bgHot[0]},${bgHot[1]},${bgHot[2]},0.34)`);
+      tubeBand.addColorStop(0.82, `rgba(${bgTint[0]},${bgTint[1]},${bgTint[2]},0.08)`);
+      tubeBand.addColorStop(1.00, 'rgba(255,255,255,0.00)');
+      logoFxCtx.fillStyle = tubeBand;
+      logoFxCtx.fillRect(0, 0, w, h);
+
+      const sweep = ((clock * 0.055) % 1.28) - 0.14;
+      const sheenX = w * sweep;
+      const sheen = logoFxCtx.createLinearGradient(sheenX - w * 0.18, 0, sheenX + w * 0.18, 0);
+      sheen.addColorStop(0.00, 'rgba(255,255,255,0.00)');
+      sheen.addColorStop(0.40, 'rgba(255,255,255,0.00)');
+      sheen.addColorStop(0.50, 'rgba(255,255,255,0.18)');
+      sheen.addColorStop(0.60, 'rgba(255,255,255,0.00)');
+      sheen.addColorStop(1.00, 'rgba(255,255,255,0.00)');
+      logoFxCtx.fillStyle = sheen;
+      logoFxCtx.fillRect(0, 0, w, h);
+    }
 
     logoFxCtx.globalCompositeOperation = 'destination-in';
     logoFxCtx.drawImage(logoMaskCanvas, 0, 0, w, h);
     logoFxCtx.globalCompositeOperation = 'source-over';
 
+    logoGlowCtx.clearRect(0, 0, w, h);
+    logoGlowCtx.fillStyle = `rgb(${bgHot[0]},${bgHot[1]},${bgHot[2]})`;
+    logoGlowCtx.fillRect(0, 0, w, h);
+    logoGlowCtx.globalCompositeOperation = 'destination-in';
+    logoGlowCtx.drawImage(logoMaskCanvas, 0, 0, w, h);
+    logoGlowCtx.globalCompositeOperation = 'source-over';
+
     logoImgCtx.clearRect(0, 0, w, h);
 
-    // KRL reads bright because it has a white-hot halo, not just a coloured edge.
-    // Mirror that here with layered white bloom behind the Woods mark.
-    logoImgCtx.save();
-    logoImgCtx.filter = `blur(${Math.round(blurPx * 2.2)}px)`;
-    logoImgCtx.globalAlpha = glowAlpha * 0.28;
-    logoImgCtx.drawImage(logoMaskCanvas, 0, 0, w, h);
-    logoImgCtx.restore();
+    if(woodsWhiteMode){
+      // White-hot KRL-style treatment: bright white logo body with layered white bloom.
+      logoImgCtx.save();
+      logoImgCtx.globalCompositeOperation = 'lighter';
+      logoImgCtx.filter = `blur(${Math.round(blurPx * 5.2)}px)`;
+      logoImgCtx.globalAlpha = glowAlpha * 1.18;
+      logoImgCtx.drawImage(logoFxCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
 
-    logoImgCtx.save();
-    logoImgCtx.filter = `blur(${Math.round(blurPx * 1.05)}px)`;
-    logoImgCtx.globalAlpha = glowAlpha * 0.68;
-    logoImgCtx.drawImage(logoFxCanvas, 0, 0, w, h);
-    logoImgCtx.restore();
+      logoImgCtx.save();
+      logoImgCtx.globalCompositeOperation = 'lighter';
+      logoImgCtx.filter = `blur(${Math.round(blurPx * 2.9)}px)`;
+      logoImgCtx.globalAlpha = glowAlpha * 1.34;
+      logoImgCtx.drawImage(logoFxCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
 
-    logoImgCtx.save();
-    logoImgCtx.globalAlpha = 0.12;
-    logoImgCtx.drawImage(logoMaskCanvas, 0, 0, w, h);
-    logoImgCtx.restore();
+      logoImgCtx.save();
+      logoImgCtx.filter = `blur(${Math.round(blurPx * 1.55)}px)`;
+      logoImgCtx.globalAlpha = glowAlpha * 0.92;
+      logoImgCtx.drawImage(logoMaskCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
 
-    logoImgCtx.save();
-    logoImgCtx.globalAlpha = 1.0;
-    logoImgCtx.drawImage(logoFxCanvas, 0, 0, w, h);
-    logoImgCtx.restore();
+      logoImgCtx.save();
+      logoImgCtx.globalCompositeOperation = 'lighter';
+      logoImgCtx.globalAlpha = 0.28;
+      logoImgCtx.drawImage(logoFxCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
+
+      logoImgCtx.save();
+      logoImgCtx.globalAlpha = 0.22;
+      logoImgCtx.drawImage(logoMaskCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
+
+      logoImgCtx.save();
+      logoImgCtx.globalAlpha = 1.0;
+      logoImgCtx.drawImage(logoFxCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
+    }else{
+      // Colourway mode: brighter emitted light around a darker sign body.
+      logoImgCtx.save();
+      logoImgCtx.globalCompositeOperation = 'lighter';
+      logoImgCtx.filter = `blur(${Math.round(blurPx * 5.8)}px)`;
+      logoImgCtx.globalAlpha = glowAlpha * (0.82 + sceneGlow * 1.24);
+      logoImgCtx.drawImage(logoGlowCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
+
+      logoImgCtx.save();
+      logoImgCtx.globalCompositeOperation = 'lighter';
+      logoImgCtx.filter = `blur(${Math.round(blurPx * 3.4)}px)`;
+      logoImgCtx.globalAlpha = glowAlpha * (0.60 + sceneGlow * 0.94);
+      logoImgCtx.drawImage(logoGlowCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
+
+      logoImgCtx.save();
+      logoImgCtx.filter = `blur(${Math.round(blurPx * 1.5)}px)`;
+      logoImgCtx.globalAlpha = glowAlpha * 0.34;
+      logoImgCtx.drawImage(logoGlowCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
+
+      logoImgCtx.save();
+      logoImgCtx.globalCompositeOperation = 'source-over';
+      logoImgCtx.globalAlpha = 0.82;
+      logoImgCtx.drawImage(logoFxCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
+
+      logoImgCtx.save();
+      logoImgCtx.filter = `blur(${Math.round(blurPx * 1.55)}px)`;
+      logoImgCtx.globalAlpha = glowAlpha * (0.16 + logoSceneLum * 0.16);
+      logoImgCtx.drawImage(logoMaskCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
+
+      logoImgCtx.save();
+      logoImgCtx.globalCompositeOperation = 'lighter';
+      logoImgCtx.filter = `blur(${Math.round(blurPx * 0.9)}px)`;
+      logoImgCtx.globalAlpha = glowAlpha * 0.56;
+      logoImgCtx.drawImage(logoGlowCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
+
+      logoImgCtx.save();
+      logoImgCtx.globalCompositeOperation = 'lighter';
+      logoImgCtx.globalAlpha = 0.20;
+      logoImgCtx.drawImage(logoMaskCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
+
+      logoImgCtx.save();
+      logoImgCtx.globalAlpha = 0.96;
+      logoImgCtx.drawImage(logoFxCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
+
+      logoImgCtx.save();
+      logoImgCtx.globalAlpha = 0.10;
+      logoImgCtx.drawImage(logoMaskCanvas, 0, 0, w, h);
+      logoImgCtx.restore();
+    }
   }
 
   function setLogo(text){
@@ -2051,8 +2506,15 @@
   const toastEl = document.getElementById('toast');
   const fpsEl = document.getElementById('fpsHud');
   let toastTimer = null;
+  let uiHidden = false;
   let fpsAccum = 0, fpsFrames = 0, fps = 60, lastScaleAt = 0, fpsShown = true;
+  function setUiHidden(hidden){
+    uiHidden = hidden;
+    if(uiHidden) setSceneMenuOpen(false);
+    document.body.classList.toggle('ui-hidden', uiHidden);
+  }
   function toast(msg){
+    if(uiHidden) return;
     toastEl.textContent = msg;
     toastEl.classList.add('show');
     clearTimeout(toastTimer);
@@ -2073,12 +2535,16 @@
         if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
         else document.exitFullscreen().catch(()=>{});
         break;
-      case ' ': e.preventDefault(); nextScene(); nextSceneAt = clock + SCENE_DWELL; break;
+      case ' ': e.preventDefault(); nextScene(); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
       case 'c': startPaletteTween((palToIdx + 1) % PALETTES.length); nextPalAt = clock + PAL_DWELL; break;  // manual cycle walks ALL colorways, not just the look's subset
       case 'v': setSceneMenuOpen(!sceneMenuOpen); break;
       case 'l': flipLogo(); break;
       case 'g': glitch(true); break;
       case 'm': toggleMicReactive(); break;
+      case 'u':
+        setUiHidden(!uiHidden);
+        if(!uiHidden) toast('ui · on');
+        break;
       case 's': gritMul = gritMul > 0.5 ? 0 : 1; toast('grit · ' + (gritMul ? 'on' : 'off')); break;
       case 'x': cycleLook(1); break;
       case 'p': fpsShown = !fpsShown; fpsEl.classList.toggle('hidden', !fpsShown); toast('fps meter · ' + (fpsShown ? 'on' : 'off')); break;
@@ -2087,16 +2553,16 @@
         toast('auto · ' + (autoScene ? 'on' : 'off'));
         break;
       case 'h': help.classList.toggle('fade'); break;
-      case '1': gotoScene(0); nextSceneAt = clock + SCENE_DWELL; break;
-      case '2': gotoScene(1); nextSceneAt = clock + SCENE_DWELL; break;
-      case '3': gotoScene(2); nextSceneAt = clock + SCENE_DWELL; break;
-      case '4': gotoScene(3); nextSceneAt = clock + SCENE_DWELL; break;
-      case '5': gotoScene(4); nextSceneAt = clock + SCENE_DWELL; break;
-      case '6': gotoScene(5); nextSceneAt = clock + SCENE_DWELL; break;
-      case '7': gotoScene(6); nextSceneAt = clock + SCENE_DWELL; break;
-      case '8': gotoScene(7); nextSceneAt = clock + SCENE_DWELL; break;
-      case '9': gotoScene(8); nextSceneAt = clock + SCENE_DWELL; break;
-      case '0': gotoScene(9); nextSceneAt = clock + SCENE_DWELL; break;
+      case '1': gotoScene(0); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
+      case '2': gotoScene(1); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
+      case '3': gotoScene(2); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
+      case '4': gotoScene(3); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
+      case '5': gotoScene(4); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
+      case '6': gotoScene(5); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
+      case '7': gotoScene(6); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
+      case '8': gotoScene(7); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
+      case '9': gotoScene(8); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
+      case '0': gotoScene(9); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
       case 'escape': setSceneMenuOpen(false); break;
     }
   });
@@ -2114,7 +2580,11 @@
      ============================================================ */
   let clock = 0;          // seconds (visual time, pausable-safe)
   let last = performance.now();
-  applyLook(0, true);     // boot into the FLOW look (snaps post params, curates the loop)
+  const initialLook = (savedState && Number.isInteger(savedState.look) && savedState.look >= 0 && savedState.look < LOOKS.length)
+    ? savedState.look
+    : 0;
+  applyLook(initialLook, true);     // boot into saved/default look, then restore detailed UI state
+  restoreUiState();
 
   function render(now){
     const rawDt = (now - last) / 1000;
