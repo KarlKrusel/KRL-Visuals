@@ -111,8 +111,8 @@
   }
   #logoImgCanvas{
     position:absolute;
-    inset:-18%;
-    width:136%; height:136%;
+    inset:-30%;
+    width:160%; height:160%;
     display:block;
     user-select:none;
   }
@@ -965,6 +965,49 @@
     col += palette(0.74 + waveC*0.08) * weave * 0.22;
     return col;
   }
+  vec3 scenePhase(vec2 uv, float t){
+    vec2 p = uv;
+    vec2 q = vec2(p.x, p.y + 0.04);
+    float depth = 1.0 / max(0.34, 1.14 - q.y);
+    float z = t * 1.38 + depth * 1.52;
+
+    float waveA = sin(q.x*8.4 + sin(q.y*2.2 - t*0.62)*1.9 - t*1.95);
+    float waveB = sin(q.y*9.7 + cos(q.x*2.0 + t*0.56)*2.1 + t*1.78);
+    float waveC = sin((q.x - q.y*0.74)*7.6 - t*2.34);
+    float field = waveA + waveB + waveC;
+    float moire = 0.5 + 0.5*sin(field * 2.05);
+
+    float lineA = smoothstep(0.092, 0.0, abs(fract(field*0.82) - 0.5));
+    float lineB = smoothstep(0.058, 0.0, abs(fract(field*1.58 + 0.28) - 0.5));
+    float lineC = smoothstep(0.042, 0.0, abs(fract(field*2.26 + 0.12) - 0.5));
+    float weave = max(lineA * (0.34 + 0.66*lineB), lineC * 0.62);
+    float sparseMask = smoothstep(0.68, 0.95, moire);
+    float sparseLines = weave * sparseMask * smoothstep(-0.90, 0.42, q.y);
+
+    float xCells = (q.x + 2.45) * 6.8;
+    float xCenter = abs(fract(xCells) - 0.5);
+    float travel = fract(z + floor(xCells) * 0.117);
+    float near = pow(1.0 - travel, 2.3);
+    float colWidth = mix(0.009, 0.10, near);
+    float column = smoothstep(colWidth, 0.0, xCenter);
+    float columnMask = smoothstep(0.74, 0.96, 1.0 - moire);
+    float columnFade = smoothstep(0.02, 0.16, travel) * smoothstep(1.0, 0.70, travel);
+    float columnLight = column * columnMask * columnFade * smoothstep(-0.92, 0.56, q.y);
+
+    float rung = smoothstep(0.08, 0.0, abs(fract((q.y + near*0.48) * mix(2.2, 12.0, near) - t*0.34) - 0.5)) * columnLight;
+    float sideSweep = pow(max(0.0, sin(abs(q.x)*5.9 - q.y*1.06 - t*2.65)), 16.0) * smoothstep(0.82, -0.06, q.y);
+    float dust = fbm(vec2(q.x*1.6 + t*0.06, q.y*2.1 - t*0.11));
+    float wash = smoothstep(0.56, 0.92, moire) * smoothstep(-0.78, 0.58, q.y);
+
+    vec3 col = palette(0.10 + dust*0.04 + moire*0.05) * 0.16;
+    col += palette(0.24 + moire*0.10 + waveA*0.05) * wash * 0.10;
+    col += palette(0.34 + waveA*0.05 + waveB*0.04) * sparseLines * 0.38;
+    col += palette(0.56 + waveC*0.05 + near*0.08) * columnLight * 0.32;
+    col += palette(0.72 + moire*0.08) * rung * 0.24;
+    col += palette(0.86 + dust*0.05) * sideSweep * 0.18;
+    col += palette(0.98) * columnLight * (0.10 + 0.12*near);
+    return col;
+  }
   vec3 sceneComets(vec2 uv, float t){
     vec2 p = uv;
     vec3 col = palette(0.08 + p.y*0.10) * 0.10;
@@ -983,19 +1026,6 @@
       col += palette(seed + fi*0.09 + t*0.03) * trail * 0.34;
       col += palette(0.92 + seed*0.06) * headGlow * 0.30;
     }
-    return col;
-  }
-  vec3 sceneCathedral(vec2 uv, float t){
-    vec2 p = uv;
-    float mx = abs(p.x);
-    float vault = 1.0 - smoothstep(0.16, 0.96, abs(p.y + 0.22 + mx*mx*0.88));
-    float pillars = smoothstep(0.032, 0.0, abs(fract(mx*4.4 - 0.08*sin(t*0.6)) - 0.5));
-    float beams = pow(max(0.0, sin((p.x*0.85 + p.y*0.2)*11.0 - t*2.0)), 14.0) * smoothstep(0.9, -0.2, p.y);
-    float fog = fbm(vec2(p.x*1.8 + t*0.05, p.y*2.4 - t*0.08));
-    vec3 col = palette(0.08 + fog*0.14) * 0.11;
-    col += palette(0.28 + p.y*0.08 + fog*0.10) * vault * 0.20;
-    col += palette(0.54 + fog*0.18) * pillars * 0.28;
-    col += palette(0.86 + fog*0.10) * beams * 0.28;
     return col;
   }
   vec3 sceneLattice(vec2 uv, float t){
@@ -1077,7 +1107,7 @@
     if(s==9) return sceneSmoke(uv,t);
     if(s==10) return sceneAurora(uv,t);
     if(s==11) return sceneInterference(uv,t);
-    if(s==12) return sceneCathedral(uv,t);
+    if(s==12) return scenePhase(uv,t);
     if(s==13) return sceneLattice(uv,t);
     if(s==14) return sceneRipple(uv,t);
     if(s==15) return sceneWarp(uv,t);
@@ -1148,6 +1178,7 @@
   uniform float u_ca;         // chromatic aberration scale
   uniform float u_vig;        // vignette strength
   uniform float u_strobe;     // white strobe on high energy
+  uniform float u_micReactive;
   uniform float u_logoOn;
   uniform float u_logoOpacity;
   uniform vec2  u_logoCenter;
@@ -1170,8 +1201,12 @@
     col.r = mix(sceneC.r, sharp.r, u_sharp) + (texture(u_scene, uv + d*ca).r - sceneC.r) * 0.5;
     col.g = mix(sceneC.g, sharp.g, u_sharp);
     col.b = mix(sceneC.b, sharp.b, u_sharp) + (texture(u_scene, uv - d*ca).b - sceneC.b) * 0.5;
+    float micMix = clamp(u_micReactive, 0.0, 1.0);
+    float bloomLimiter = mix(1.0, 0.68, micMix);
+    float strobeLimiter = mix(1.0, 0.34, micMix);
+    float strobeEnergy = mix(u_energy, min(u_energy, 0.92), micMix);
     // bloom
-    col += texture(u_bloom, uv).rgb * (u_bloomAmt + 0.14*u_energy);
+    col += texture(u_bloom, uv).rgb * (u_bloomAmt + 0.14*u_energy) * bloomLimiter;
     // edge / outline (Laplacian on luma) — crisp graphic linework, kept sharp by adding after bloom
     float lap = abs(4.0*luma(sceneC) - (luma(sRt)+luma(sLf)+luma(sUp)+luma(sDn)));
     float edge = clamp(lap * 7.0, 0.0, 1.0);
@@ -1191,7 +1226,7 @@
     // posterize into colour bands (graphic / screen-print look)
     if(u_bands > 1.5){ col = floor(col * u_bands + 0.5) / u_bands; }
     // strobe flash on energy peaks
-    col = mix(col, vec3(1.0), u_strobe * smoothstep(0.82, 1.0, u_energy));
+    col = mix(col, vec3(1.0), u_strobe * strobeLimiter * smoothstep(0.90, 1.0, strobeEnergy));
 
     // ---- KRL clear-glass refraction (bends the live visuals through the letters) ----
     if(u_logoOn > 0.5 && u_logoOpacity > 0.001){
@@ -1220,7 +1255,7 @@
       }
     }
 
-    col = col / (1.0 + col * 0.25);         // soft rolloff prevents white screen blowout
+    col = col / (1.0 + col * mix(0.25, 0.38, micMix));   // stronger shoulder under mic peaks
     col = pow(max(col, 0.0), vec3(0.88));
     fragColor = vec4(col, 1.0);
   }`;
@@ -1289,7 +1324,14 @@
   let renderScale = 1.0;            // dynamic-quality multiplier (auto-tunes to the GPU)
   const MAX_RENDER_W = 1200;
   const MIN_RENDER_SCALE = 0.34;
+  const HARD_MAX_RENDER_SCALE = 2.0;
+  const GL_MAX_TEX = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096;
   let sceneT, bloomA, bloomB;
+
+  function maxRenderScale(){
+    const texBoundScale = (GL_MAX_TEX * 0.88) / Math.max(baseW, baseH, 2);
+    return Math.max(1.0, Math.min(HARD_MAX_RENDER_SCALE, texBoundScale));
+  }
 
   function allocTargets(){
     if(sceneT){ gl.deleteTexture(sceneT.tex); gl.deleteFramebuffer(sceneT.fbo); }
@@ -1448,9 +1490,9 @@
   /* ============================================================
      SCENES (crossfade in-shader, no hard cuts)
      ============================================================ */
-  const SCENE_NAMES = ['tunnel','kaleido','plasma','grid','bars','prism','ribbons','pulse','lasers','smoke','aurora','interference','cathedral','lattice','ripple','warp','contour'];
-  const CURATED_LOOP_ORDER = [2, 8, 10, 6, 11, 13, 14, 15, 16, 4, 1, 12, 7, 5, 3, 9, 0];
-  const CURATED_LOOP_SELECTION = [2, 8, 10, 6, 11, 13, 14, 15, 16, 4, 12, 7, 5];
+  const SCENE_NAMES = ['tunnel','kaleido','plasma','grid','bars','prism','ribbons','pulse','lasers','smoke','aurora','interference','phase','lattice','ripple','warp','contour'];
+  const CURATED_LOOP_ORDER = [2, 8, 10, 6, 11, 12, 13, 14, 15, 16, 4, 1, 7, 5, 3, 9, 0];
+  const CURATED_LOOP_SELECTION = [2, 8, 10, 6, 11, 12, 13, 14, 15, 4, 7, 5];
   const sceneLoopEnabled = SCENE_NAMES.map(() => true);
   const sceneMenuToggle = document.getElementById('sceneMenuToggle');
   const sceneMenuPanel = document.getElementById('sceneMenuPanel');
@@ -1734,7 +1776,7 @@
      ============================================================ */
   const LOOKS = [
     // soft flowing neon (the dreamy stuff Karl likes) — gentle, bloomy, no edge/posterize
-    { name:'FLOW',    scenes:[2,10,9,6,11,13,14,15,16,7], dwell:24, trans:3.4, palettes:[4,7,0,11,5],
+    { name:'FLOW',    scenes:[2,10,9,6,11,12,13,14,15,16,7], dwell:24, trans:3.4, palettes:[4,7,0,11,5],
       post:{ sharp:0.34, bloom:0.64, sat:1.34, contrast:1.05, black:0.00, bands:0, edge:0.00, ca:1.0, vig:1.00, strobe:0.00, grit:0.18, speed:0.60 } },
     // James Hype — sharp, punchy, fast cuts, light outline, mild strobe
     { name:'KINETIC', scenes:[4,8,3,5,11],    dwell:12, trans:1.8, palettes:[0,4,1,13],
@@ -1746,10 +1788,10 @@
     { name:'RAVE',    scenes:[0,2,8,7,10,6],  dwell:16, trans:2.4, palettes:[1,8,0,10,6],
       post:{ sharp:0.45, bloom:0.88, sat:1.50, contrast:1.10, black:0.02, bands:0, edge:0.00, ca:1.3, vig:0.90, strobe:0.32, grit:0.18, speed:0.82 } },
     // Skrillex — gritty, glitchy, heavy RGB split, posterize, scanlines
-    { name:'GRIT',    scenes:[4,9,11,5,12],   dwell:14, trans:1.6, palettes:[2,9,5,1],
+    { name:'GRIT',    scenes:[4,9,11,12,5],   dwell:14, trans:1.6, palettes:[2,9,5,1],
       post:{ sharp:0.70, bloom:0.40, sat:1.12, contrast:1.26, black:0.10, bands:6, edge:0.50, ca:2.4, vig:1.10, strobe:0.40, grit:0.85, speed:0.74 } },
     // graphic ink / line-art — maximum sharp, strong outline + posterize, low sat
-    { name:'INK',     scenes:[5,11,3,12,4,1], dwell:18, trans:2.2, palettes:[12,0,4],
+    { name:'INK',     scenes:[5,11,12,3,4,1], dwell:18, trans:2.2, palettes:[12,0,4],
       post:{ sharp:1.00, bloom:0.26, sat:0.55, contrast:1.42, black:0.14, bands:4, edge:1.00, ca:0.8, vig:1.15, strobe:0.14, grit:0.30, speed:0.58 } },
   ];
   const post   = { ...LOOKS[0].post };   // live (lerped) post params
@@ -2136,10 +2178,11 @@
   const LOGO_FADE_SEC = 1.1;
   const LOGO_GLOW_SWAP_SEC = 0.38;
   const LOGO_GLOW_FREEZE_SEC = 0.55;
-  const LOGO_FX_IDLE_FPS = 6;
-  const LOGO_FX_TWEEN_FPS = 12;
+  const LOGO_FX_IDLE_FPS = 24;
+  const LOGO_FX_TWEEN_FPS = 36;
   const LOGO_FX_MAX_W = 1100;
-  const LOGO_CANVAS_PAD = 0.18;
+  const LOGO_CANVAS_OVERFLOW = 0.30;
+  const LOGO_CANVAS_DRAW_PAD = 0.228;
   let logoFreezeUntil = 0;   // pause glow-color/glitch updates while a logo fades in
   let cssLast = -1;          // throttle clock for all CSS-variable writes
   let logoGlowTimer = null;
@@ -2168,7 +2211,7 @@
     const cssW = Math.round(bounds.width || logoImg.clientWidth || Math.min(window.innerWidth * 0.66, LOGO_FX_MAX_W));
     if(!cssW) return false;
     const dpr = Math.min(window.devicePixelRatio || 1, 1.0);
-    const padScale = 1 + LOGO_CANVAS_PAD * 2;
+    const padScale = 1 + LOGO_CANVAS_OVERFLOW * 2;
     const targetW = Math.min(Math.round(LOGO_FX_MAX_W * padScale), Math.max(520, Math.round(cssW * dpr * padScale)));
     const targetH = Math.max(2, Math.round(targetW * (649 / 2403)));
     if(!force && targetW === logoFxLastW && targetH === logoFxLastH) return false;
@@ -2198,8 +2241,8 @@
     const w = logoMaskCanvas.width;
     const h = logoMaskCanvas.height;
     if(!w || !h || !logoImgBase.complete || !logoImgBase.naturalWidth) return;
-    const padX = w * LOGO_CANVAS_PAD;
-    const padY = h * LOGO_CANVAS_PAD;
+    const padX = w * LOGO_CANVAS_DRAW_PAD;
+    const padY = h * LOGO_CANVAS_DRAW_PAD;
     const drawW = w - padX * 2;
     const drawH = h - padY * 2;
     logoMaskCtx.clearRect(0, 0, w, h);
@@ -2598,8 +2641,10 @@
       fps = fpsFrames / fpsAccum;
       fpsAccum = 0; fpsFrames = 0;
       if(clock - lastScaleAt > 1.5){
+        const maxScale = maxRenderScale();
         if(fps < 36 && renderScale > MIN_RENDER_SCALE){ renderScale = Math.max(MIN_RENDER_SCALE, renderScale - 0.18); applySize(); lastScaleAt = clock; }
         else if(fps < 48 && renderScale > MIN_RENDER_SCALE){ renderScale = Math.max(MIN_RENDER_SCALE, renderScale - 0.10); applySize(); lastScaleAt = clock; }
+        else if(fps > 59.4 && renderScale < maxScale){ renderScale = Math.min(maxScale, renderScale + (renderScale < 1.0 ? 0.08 : 0.06)); applySize(); lastScaleAt = clock; }
         else if(fps > 58 && renderScale < 1.0){ renderScale = Math.min(1.0, renderScale + 0.08); applySize(); lastScaleAt = clock; }
       }
       if(fpsShown) fpsEl.textContent = Math.round(fps) + ' fps · ' + Math.round(renderScale*100) + '% res';
@@ -2720,6 +2765,7 @@
     gl.uniform1f(compProg.u('u_ca'), post.ca);
     gl.uniform1f(compProg.u('u_vig'), post.vig);
     gl.uniform1f(compProg.u('u_strobe'), post.strobe);
+    gl.uniform1f(compProg.u('u_micReactive'), micReactive ? 1.0 : 0.0);
     drawFull();
 
     requestAnimationFrame(render);
