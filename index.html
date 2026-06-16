@@ -101,19 +101,19 @@
     isolation:isolate;
     filter:
        drop-shadow(0 3px 7px rgba(0,0,0,0.6))
-       drop-shadow(0 0 10px rgba(255,255,255,0.18))
-       drop-shadow(0 0 18px var(--accentSoft))
-       drop-shadow(0 0 42px var(--accent));
+       drop-shadow(0 0 10px rgba(255,255,255,0.14))
+       drop-shadow(0 0 24px var(--accentSoft))
+       drop-shadow(0 0 54px var(--accent));
     transition:filter .45s ease;
     user-select:none;
   }
   #logoImg::before{
     content:"";
     position:absolute; inset:0;
-    background:radial-gradient(circle at 50% 50%, var(--accent2) 0%, var(--accent) 58%, var(--accent) 100%);
-    opacity:0.34;
-    filter:blur(18px);
-    transform:scale(1.035);
+    background:var(--accent);
+    opacity:0.54;
+    filter:blur(22px);
+    transform:scale(1.045);
     -webkit-mask-image:var(--logoMaskUrl);
     mask-image:var(--logoMaskUrl);
     -webkit-mask-repeat:no-repeat;
@@ -129,14 +129,12 @@
     width:100%; height:100%;
   }
   #logoImgBase{
-    object-fit:contain;
-    opacity:0.88;
-    filter:grayscale(1) brightness(1.16) contrast(1.08);
+    display:none;
   }
   #logoImgTint{
     background:var(--accent);
-    opacity:0.98;
-    mix-blend-mode:color;
+    opacity:1;
+    mix-blend-mode:normal;
     -webkit-mask-image:var(--logoMaskUrl);
     mask-image:var(--logoMaskUrl);
     -webkit-mask-repeat:no-repeat;
@@ -149,9 +147,9 @@
   #logoImg.glowSettling{
     filter:
        drop-shadow(0 3px 7px rgba(0,0,0,0.6))
-       drop-shadow(0 0 7px rgba(255,255,255,0.12))
+       drop-shadow(0 0 7px rgba(255,255,255,0.10))
        drop-shadow(0 0 14px var(--accentSoft))
-       drop-shadow(0 0 26px var(--accentSoft));
+       drop-shadow(0 0 28px var(--accentSoft));
   }
 
   /* ---- gentle glitch: text-only shimmer, never applied to the Woods PNG ---- */
