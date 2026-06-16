@@ -13,10 +13,10 @@
   :root{
     --energy: 0;
     --logoScale: 1;
+    --accentCore: #ffffff;
     --accent: #ffffff;
     --accentSoft: rgba(255,255,255,0.22);
     --accent2: #66e0ff;
-    --logoMaskUrl: none;
   }
   *{ margin:0; padding:0; box-sizing:border-box; }
   html,body{ width:100%; height:100%; overflow:hidden; background:#000; }
@@ -98,58 +98,21 @@
     width:min(66vw, 92vw);
     aspect-ratio:2403 / 649;
     max-height:min(42vh, 40vw);
-    isolation:isolate;
-    filter:
-       drop-shadow(0 3px 7px rgba(0,0,0,0.6))
-       drop-shadow(0 0 10px rgba(255,255,255,0.14))
-       drop-shadow(0 0 24px var(--accentSoft))
-       drop-shadow(0 0 54px var(--accent));
-    transition:filter .45s ease;
+    overflow:visible;
     user-select:none;
   }
-  #logoImg::before{
-    content:"";
-    position:absolute; inset:0;
-    background:var(--accent);
-    opacity:0.54;
-    filter:blur(22px);
-    transform:scale(1.045);
-    -webkit-mask-image:var(--logoMaskUrl);
-    mask-image:var(--logoMaskUrl);
-    -webkit-mask-repeat:no-repeat;
-    mask-repeat:no-repeat;
-    -webkit-mask-size:contain;
-    mask-size:contain;
-    -webkit-mask-position:center;
-    mask-position:center;
-  }
-  #logoImgBase,
-  #logoImgTint{
+  #logoImgCanvas{
     position:absolute; inset:0;
     width:100%; height:100%;
+    display:block;
+    user-select:none;
   }
   #logoImgBase{
-    display:none;
-  }
-  #logoImgTint{
-    background:var(--accent);
-    opacity:1;
-    mix-blend-mode:normal;
-    -webkit-mask-image:var(--logoMaskUrl);
-    mask-image:var(--logoMaskUrl);
-    -webkit-mask-repeat:no-repeat;
-    mask-repeat:no-repeat;
-    -webkit-mask-size:contain;
-    mask-size:contain;
-    -webkit-mask-position:center;
-    mask-position:center;
-  }
-  #logoImg.glowSettling{
-    filter:
-       drop-shadow(0 3px 7px rgba(0,0,0,0.6))
-       drop-shadow(0 0 7px rgba(255,255,255,0.10))
-       drop-shadow(0 0 14px var(--accentSoft))
-       drop-shadow(0 0 28px var(--accentSoft));
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:contain;
+    opacity:0;
+    user-select:none;
   }
 
   /* ---- gentle glitch: text-only shimmer, never applied to the Woods PNG ---- */
@@ -176,14 +139,14 @@
     font-size:13px; font-weight:600;
     letter-spacing:0.02em;
     color:rgba(255,255,255,0.82);
-    background:rgba(0,0,0,0.42);
-    backdrop-filter:blur(6px);
-    border:1px solid rgba(255,255,255,0.12);
-    border-radius:10px;
-    padding:12px 16px;
+    background:rgba(0,0,0,0.58);
+    backdrop-filter:none;
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:6px;
+    padding:10px 12px;
     text-align:center;
     line-height:1.7;
-    transition:opacity .6s ease;
+    transition:opacity .2s linear;
     max-width:92vw;
   }
   #help.fade{ opacity:0; }
@@ -193,10 +156,10 @@
     min-width:1.4em;
     padding:1px 6px;
     margin:0 1px;
-    border-radius:5px;
-    background:rgba(255,255,255,0.14);
+    border-radius:3px;
+    background:transparent;
     color:#fff;
-    border:1px solid rgba(255,255,255,0.18);
+    border:1px solid rgba(255,255,255,0.14);
   }
   #toast{
     position:fixed; top:4vh; left:50%; transform:translateX(-50%);
@@ -206,41 +169,50 @@
     color:#fff;
     background:rgba(0,0,0,0.5);
     border:1px solid rgba(255,255,255,0.15);
-    border-radius:8px;
-    padding:8px 14px;
-    opacity:0;
-    transition:opacity .35s ease;
+    border-radius:6px;
+    padding:6px 10px;
+    display:none;
     pointer-events:none;
   }
-  #toast.show{ opacity:1; }
+  #toast.show{ display:block; }
   #micHud{
     position:fixed;
     right:2.4vw; top:3.2vh;
     z-index:6;
     min-width:164px;
     padding:10px 12px;
-    border-radius:10px;
+    border-radius:6px;
     background:rgba(0,0,0,0.34);
     border:1px solid rgba(255,255,255,0.14);
-    backdrop-filter:blur(8px);
+    backdrop-filter:none;
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size:12px;
     color:rgba(255,255,255,0.86);
-    opacity:0;
-    transition:opacity .25s ease;
+    display:none;
     pointer-events:none;
   }
-  #micHud.show{ opacity:1; }
+  #micHud.show{ display:block; }
   #micHudLabel{
     display:flex;
     justify-content:space-between;
     gap:10px;
-    margin-bottom:7px;
+    margin-bottom:6px;
     letter-spacing:0.05em;
     text-transform:uppercase;
   }
+  #micHudLevelRow{
+    margin-top:6px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:10px;
+    font-size:10px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:rgba(255,255,255,0.72);
+  }
   #micHudBar{
-    height:8px;
+    height:10px;
     border-radius:999px;
     overflow:hidden;
     background:rgba(255,255,255,0.10);
@@ -250,15 +222,63 @@
     height:100%;
     border-radius:inherit;
     background:linear-gradient(90deg, #00e5ff 0%, #24ff72 45%, #ffe14d 72%, #ff4d9a 100%);
-    box-shadow:0 0 14px rgba(0,229,255,0.28);
     transition:width .08s linear;
+  }
+  #micHudMeta{
+    margin-top:8px;
+    display:grid;
+    gap:6px;
+  }
+  .micHudRow{
+    display:grid;
+    grid-template-columns:auto 1fr auto;
+    align-items:center;
+    gap:8px;
+    font-size:10px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:rgba(255,255,255,0.68);
+  }
+  .micHudBarMini{
+    height:8px;
+    border-radius:999px;
+    overflow:hidden;
+    background:rgba(255,255,255,0.08);
+  }
+  .micHudFillMini{
+    width:0%;
+    height:100%;
+    border-radius:inherit;
+    transition:width .12s linear;
+  }
+  #micHudAvgFill{
+    background:linear-gradient(90deg, rgba(0,229,255,0.88) 0%, rgba(36,255,114,0.92) 100%);
+  }
+  #micHudLoudFill{
+    background:linear-gradient(90deg, rgba(255,225,77,0.88) 0%, rgba(255,77,154,0.94) 100%);
+  }
+  #micHudAvgLabel{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+  }
+  #micHudAvgTick{
+    width:8px;
+    height:8px;
+    border-radius:999px;
+    background:rgba(0,229,255,0.32);
+    transition:background .12s ease, transform .12s ease;
+  }
+  #micHudAvgTick.live{
+    background:rgba(0,229,255,0.98);
+    transform:scale(1.18);
   }
   #sceneMenuToggle{
     position:fixed;
     left:2.4vw; top:3.2vh;
     z-index:7;
     border:1px solid rgba(255,255,255,0.18);
-    border-radius:999px;
+    border-radius:6px;
     background:rgba(0,0,0,0.44);
     color:#fff;
     padding:10px 14px;
@@ -267,31 +287,27 @@
     font-weight:800;
     letter-spacing:0.08em;
     text-transform:uppercase;
-    backdrop-filter:blur(10px);
+    backdrop-filter:none;
     cursor:pointer;
   }
   #sceneMenuPanel{
     position:fixed;
     left:2.4vw; top:9.2vh;
     z-index:7;
-    width:min(420px, 92vw);
+    width:min(360px, 92vw);
     max-height:74vh;
     overflow:auto;
-    padding:14px;
-    border-radius:16px;
+    padding:10px;
+    border-radius:6px;
     background:rgba(3,8,18,0.84);
     border:1px solid rgba(255,255,255,0.14);
-    box-shadow:0 24px 70px rgba(0,0,0,0.42);
-    backdrop-filter:blur(16px);
-    opacity:0;
+    backdrop-filter:none;
+    display:none;
     pointer-events:none;
-    transform:translateY(-6px);
-    transition:opacity .22s ease, transform .22s ease;
   }
   #sceneMenuPanel.open{
-    opacity:1;
+    display:block;
     pointer-events:auto;
-    transform:translateY(0);
   }
   #sceneMenuHead{
     display:flex;
@@ -322,7 +338,7 @@
   }
   .sceneMenuBtn{
     border:1px solid rgba(255,255,255,0.14);
-    border-radius:999px;
+    border-radius:6px;
     background:rgba(255,255,255,0.08);
     color:#fff;
     padding:7px 11px;
@@ -349,14 +365,60 @@
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size:11px; font-weight:800; letter-spacing:0.07em;
     cursor:pointer;
-    transition:background .15s ease, color .15s ease, border-color .15s ease;
   }
-  .lookBtn:hover{ background:rgba(255,255,255,0.12); color:#fff; }
   .lookBtn.active{
-    background:linear-gradient(135deg, rgba(0,229,255,0.9), rgba(255,45,150,0.9));
-    border-color:rgba(255,255,255,0.6);
-    color:#04060f;
-    box-shadow:0 0 20px rgba(0,229,255,0.22);
+    background:rgba(255,255,255,0.18);
+    border-color:rgba(255,255,255,0.28);
+    color:#fff;
+  }
+  #settingsSection{ margin-bottom:13px; }
+  #settingsLabel{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+    color:rgba(255,255,255,0.5); margin-bottom:9px;
+  }
+  .settingRow{
+    display:grid;
+    grid-template-columns:84px 1fr auto;
+    align-items:center;
+    gap:11px;
+    margin-bottom:9px;
+  }
+  .settingName{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px; font-weight:700; letter-spacing:0.04em;
+    color:rgba(255,255,255,0.82);
+  }
+  .settingRange{
+    -webkit-appearance:none; appearance:none;
+    width:100%; height:4px; border-radius:999px;
+    background:rgba(255,255,255,0.18); outline:none; cursor:pointer;
+  }
+  .settingRange::-webkit-slider-thumb{
+    -webkit-appearance:none; appearance:none;
+    width:15px; height:15px; border-radius:50%;
+    background:#fff; cursor:pointer;
+  }
+  .settingRange::-moz-range-thumb{
+    width:15px; height:15px; border:none; border-radius:50%;
+    background:#fff; cursor:pointer;
+  }
+  .settingVal{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px; font-weight:700; color:#fff; min-width:34px; text-align:right;
+  }
+  .settingToggle{
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:6px; background:rgba(255,255,255,0.06);
+    color:rgba(255,255,255,0.82);
+    padding:6px 15px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase;
+    cursor:pointer;
+  }
+  .settingToggle.active{
+    background:rgba(255,255,255,0.18);
+    border-color:rgba(255,255,255,0.28); color:#fff;
   }
   #sceneMenuList{
     display:grid;
@@ -371,18 +433,17 @@
   .scenePreview,
   .sceneLoopToggle{
     border:1px solid rgba(255,255,255,0.12);
-    border-radius:12px;
+    border-radius:6px;
     color:#fff;
     cursor:pointer;
   }
   .scenePreview{
-    background:linear-gradient(135deg, rgba(30,45,85,0.44), rgba(7,14,28,0.82));
+    background:rgba(255,255,255,0.04);
     text-align:left;
-    padding:12px 12px 11px;
+    padding:10px 10px 9px;
   }
   .scenePreview.current{
-    border-color:rgba(0,229,255,0.82);
-    box-shadow:0 0 0 1px rgba(0,229,255,0.24) inset, 0 0 26px rgba(0,229,255,0.12);
+    border-color:rgba(255,255,255,0.28);
   }
   .scenePreviewLabel{
     display:block;
@@ -411,7 +472,7 @@
     text-transform:uppercase;
   }
   .sceneLoopToggle.active{
-    background:linear-gradient(135deg, rgba(0,229,255,0.24), rgba(255,45,117,0.24));
+    background:rgba(255,255,255,0.14);
     border-color:rgba(255,255,255,0.26);
   }
 
@@ -423,8 +484,8 @@
     color:rgba(255,255,255,0.55);
     background:rgba(0,0,0,0.32);
     border:1px solid rgba(255,255,255,0.1);
-    border-radius:7px;
-    padding:5px 9px;
+    border-radius:5px;
+    padding:4px 7px;
     pointer-events:none;
   }
   #fpsHud.hidden{ display:none; }
@@ -448,8 +509,8 @@
       </div>
       <div class="layer hidden" id="logoImgLayer">
         <div id="logoImg" aria-label="logo">
+          <canvas id="logoImgCanvas"></canvas>
           <img id="logoImgBase" alt="logo" />
-          <div id="logoImgTint" aria-hidden="true"></div>
         </div>
       </div>
     </div>
@@ -459,6 +520,19 @@
   <div id="micHud">
     <div id="micHudLabel"><span>mic</span><span id="micHudState">off</span></div>
     <div id="micHudBar"><div id="micHudFill"></div></div>
+    <div id="micHudLevelRow"><span>level</span><span id="micHudLevelText">0%</span></div>
+    <div id="micHudMeta">
+      <div class="micHudRow">
+        <span id="micHudAvgLabel">avg 60s <span id="micHudAvgTick"></span></span>
+        <div class="micHudBarMini"><div class="micHudFillMini" id="micHudAvgFill"></div></div>
+        <span id="micHudAvgText">0%</span>
+      </div>
+      <div class="micHudRow">
+        <span>loud gate</span>
+        <div class="micHudBarMini"><div class="micHudFillMini" id="micHudLoudFill"></div></div>
+        <span id="micHudLoudText">0%</span>
+      </div>
+    </div>
   </div>
   <div id="fpsHud">— fps</div>
   <button id="sceneMenuToggle" type="button">Visuals</button>
@@ -472,6 +546,34 @@
     <div id="lookSection">
       <div id="lookSectionLabel">Style — press X to cycle</div>
       <div id="lookRow"></div>
+    </div>
+    <div id="settingsSection">
+      <div id="settingsLabel">Timing &amp; color</div>
+      <div class="settingRow">
+        <label class="settingName" for="sceneIntervalRange">Scene every</label>
+        <input id="sceneIntervalRange" class="settingRange" type="range" min="3" max="60" step="1" value="24" />
+        <span class="settingVal" id="sceneIntervalVal">24s</span>
+      </div>
+      <div class="settingRow">
+        <label class="settingName" for="palIntervalRange">Color every</label>
+        <input id="palIntervalRange" class="settingRange" type="range" min="3" max="90" step="1" value="42" />
+        <span class="settingVal" id="palIntervalVal">42s</span>
+      </div>
+      <div class="settingRow">
+        <label class="settingName" for="logoIntervalRange">Logo every</label>
+        <input id="logoIntervalRange" class="settingRange" type="range" min="3" max="40" step="1" value="10" />
+        <span class="settingVal" id="logoIntervalVal">10s</span>
+      </div>
+      <div class="settingRow">
+        <span class="settingName">Shuffle</span>
+        <span></span>
+        <button class="settingToggle" id="shuffleToggle" type="button">Off</button>
+      </div>
+      <div class="settingRow">
+        <span class="settingName">Rainbow wheel</span>
+        <span></span>
+        <button class="settingToggle" id="rainbowToggle" type="button">Off</button>
+      </div>
     </div>
     <div id="sceneMenuActions">
       <button class="sceneMenuBtn" id="sceneMenuAllOn" type="button">All On</button>
@@ -593,37 +695,69 @@
     return col;
   }
   vec3 sceneGrid(vec2 uv, float t){
-    vec3 col = palette(0.78 + uv.y*0.10) * smoothstep(-0.35, 1.0, uv.y) * 0.14;
-    float haze = fbm(vec2(uv.x*1.8 + t*0.16, uv.y*1.5 - t*0.08));
-    col += palette(0.48 + haze*0.25) * smoothstep(-0.05, 0.95, uv.y + haze*0.18) * 0.18;
-    float sun = smoothstep(0.24, 0.0, length(uv - vec2(0.0, 0.18)));
-    col += palette(0.94) * sun * 0.44;
-    if(uv.y < 0.03){
-      float z = 1.0 / (-uv.y + 0.07);
+    // synthwave sunset grid: banded neon sun, glowing horizon, crisp scrolling floor
+    vec3 col = vec3(0.0);
+    const float hY = 0.0;                                   // horizon line height
+    // sky — soft vertical neon gradient with a touch of drifting haze
+    float sky = clamp(uv.y / 0.9, 0.0, 1.0);
+    col += mix(palette(0.58), palette(0.84), sky) * (0.05 + 0.11*sky);
+    float haze = fbm(vec2(uv.x*1.6 + t*0.05, uv.y*2.0 - t*0.02));
+    col += palette(0.50 + haze*0.2) * smoothstep(hY, 0.8, uv.y) * haze * 0.05;
+    // banded neon sun sitting on the horizon
+    vec2 s = (uv - vec2(0.0, 0.30)) * vec2(1.0, 1.16);
+    float sd = length(s);
+    float sun = smoothstep(0.30, 0.27, sd);
+    float cuts = smoothstep(-0.25, 0.65, sin((uv.y - 0.16)*26.0) + (uv.y - 0.18)*7.0);
+    sun *= clamp(cuts, 0.0, 1.0);                           // horizontal slits, thinning upward
+    col += mix(palette(0.97), palette(0.62), smoothstep(0.0, 0.5, uv.y)) * sun * 0.95;
+    col += palette(0.90) * smoothstep(0.7, 0.0, sd) * 0.14; // sun halo
+    // glowing horizon line
+    col += palette(0.93) * smoothstep(0.03, 0.0, abs(uv.y - hY)) * 0.55;
+    // perspective neon floor
+    if(uv.y < hY){
+      float z = 0.34 / (hY - uv.y + 0.0025);
       float x = uv.x * z;
-      float gx = abs(fract(x*1.6) - 0.5);
-      float gz = abs(fract(z*0.62 - t*1.45) - 0.5);
-      float g = min(gx, gz);
-      float line = smoothstep(0.08, 0.0, g);
-      vec3 gc = palette(0.10 + 0.08*sin(t*0.2) + x*0.01);
-      col += gc * line * (0.92 - clamp(z/10.0, 0.0, 0.55));
+      float fade = exp(-z * 0.14);
+      float w = 0.06 + z*0.004;
+      float gx = smoothstep(w, 0.0, abs(fract(x*0.5) - 0.5));
+      float gz = smoothstep(w, 0.0, abs(fract(z*0.5 - t*1.1) - 0.5));
+      float grid = max(gx, gz);
+      vec3 gc = palette(0.10 + 0.06*sin(t*0.2) + abs(x)*0.01);
+      col += gc * grid * fade * 1.15;
+      col += palette(0.42) * fade * 0.04;                  // floor ambient wash
     }
-    float horizon = smoothstep(0.18, 0.0, abs(uv.y - 0.02));
-    col += palette(0.84) * horizon * 0.32;
     return col;
   }
   vec3 sceneBars(vec2 uv, float t){
-    vec2 p = uv * 1.1;
-    float d1 = p.x*0.9 + p.y*0.35;
-    float d2 = -p.x*0.45 + p.y*1.15;
-    float stripeA = smoothstep(0.10, 0.98, 0.5 + 0.5*sin(d1*12.5 - t*4.4));
-    float stripeB = smoothstep(0.08, 0.95, 0.5 + 0.5*sin(d2*16.5 + t*3.5));
-    float shimmer = 0.5 + 0.5*sin((p.x - p.y)*27.0 - t*6.7);
-    vec3 col = palette(0.18 + p.y*0.22 + t*0.03) * 0.18;
-    col += palette(0.38 + d1*0.05 + t*0.09) * stripeA * 0.58;
-    col += palette(0.80 + d2*0.04 - t*0.06) * stripeB * 0.38;
-    col += palette(0.90) * pow(max(stripeA*stripeB, 0.0), 1.8) * 0.42;
-    col += palette(0.62) * smoothstep(0.88, 1.0, shimmer) * 0.12;
+    // neon spectrum: vertical light columns that bounce, bright caps + floor reflection
+    vec3 col = vec3(0.0);
+    const float N = 15.0;                                   // number of bars
+    const float y0 = -0.85;                                 // floor line
+    float u   = uv.x * 0.5 + 0.5;
+    float idx = floor(u * N);
+    float fx  = fract(u * N);
+    float seed = hash21(vec2(idx, 7.3));
+    // per-column animated level (two detuned sines + a little noise = lively spectrum)
+    float level = clamp(0.32
+                        + 0.40*sin(t*(1.6 + seed*2.4) + seed*9.0)
+                        + 0.20*sin(t*(0.6 + seed*1.1) + seed*4.0)
+                        + 0.16*(noise(vec2(idx*0.3, t*0.9)) - 0.5), 0.05, 1.0);
+    float top = y0 + 0.22 + 1.5*level;                      // top edge of the bar
+    vec3 bc = palette(0.08 + idx/N*0.70 + t*0.03);
+    // soft side edges -> a gap between columns
+    float side = smoothstep(0.07, 0.17, fx) * smoothstep(0.93, 0.83, fx);
+    // bar body, brighter toward its top
+    float body = side * smoothstep(0.0, 0.015, top - uv.y) * step(y0, uv.y);
+    float vgrad = 0.35 + 0.65 * clamp((uv.y - y0)/(top - y0 + 1e-3), 0.0, 1.0);
+    col += bc * body * vgrad * 0.95;
+    // bright cap riding the top of each bar
+    col += palette(0.95) * side * smoothstep(0.045, 0.0, abs(uv.y - top)) * 0.9;
+    // floor reflection (mirror about y0, fading downward)
+    float ry = 2.0*y0 - uv.y;
+    float refl = side * smoothstep(0.0, 0.015, top - ry) * smoothstep(y0, y0 - 0.55, uv.y);
+    col += bc * refl * 0.16;
+    // glowing floor strip
+    col += palette(0.88) * smoothstep(0.05, 0.0, abs(uv.y - y0)) * 0.18;
     return col;
   }
   vec3 scenePrism(vec2 uv, float t){
@@ -772,6 +906,72 @@
     col += palette(0.86 + fog*0.10) * beams * 0.28;
     return col;
   }
+  vec3 sceneLattice(vec2 uv, float t){
+    // interference, made geometric: the SAME beating sine fields as sceneInterference,
+    // but the moire is sliced into crisp contour lines so the fringes read sharp.
+    vec2 p = uv * 1.15;
+    float waveA = sin(p.x*10.0 + sin(p.y*2.6 - t*0.8)*2.0 - t*2.3);
+    float waveB = sin(p.y*11.0 + cos(p.x*2.1 + t*0.7)*2.3 + t*2.0);
+    float waveC = sin((p.x + p.y)*8.5 - t*2.8);
+    float waveD = sin((p.x - p.y)*8.5 + t*2.5);            // 4th front -> diamond moire
+    float field = waveA + waveB + waveC + waveD;
+    // hard contour bands of the interference field (crisp instead of soft ridges)
+    float bands = abs(fract(field*0.85) - 0.5);
+    float line  = smoothstep(0.075, 0.0, bands);
+    // a second, finer contour set offset in phase -> sharp moire beat between them
+    float fine  = smoothstep(0.05, 0.0, abs(fract(field*1.7 + 0.5) - 0.5));
+    float nodes = line * fine;                             // bright where fringes cross
+    vec3 col = palette(0.12 + 0.05*sin(t*0.2)) * 0.14;
+    col += palette(0.40 + waveA*0.08 + waveB*0.06) * line * 0.46;
+    col += palette(0.74 + waveC*0.08) * fine * 0.22;
+    col += palette(0.94) * nodes * 0.5;
+    return col;
+  }
+  vec3 sceneRipple(vec2 uv, float t){
+    // concentric interference: moving point sources beat into Newton's-rings moire,
+    // mapped across the FULL palette so the fringes are richly multi-colored.
+    vec2 p = uv * 1.15;
+    float field = 0.0;
+    for(int i=0;i<4;i++){
+      float fi = float(i);
+      vec2 src = 0.9 * vec2(sin(t*0.33 + fi*1.7), cos(t*0.27 + fi*2.1));
+      field += sin(length(p - src)*15.0 - t*2.2 + fi*1.1);
+    }
+    float ph = 0.5 + field*0.13 + 0.04*t;                  // wide swing -> many colors
+    vec3 col = palette(ph) * (0.26 + 0.09*field);
+    float fringe = smoothstep(0.085, 0.0, abs(fract(field*0.5) - 0.5));
+    col += palette(ph + 0.35) * fringe * 0.55;             // crisp concentric rings
+    col += palette(0.95) * smoothstep(3.1, 3.9, abs(field)) * 0.4;  // bright antinodes
+    return col;
+  }
+  vec3 sceneWarp(vec2 uv, float t){
+    // the interference look, but the domain is warped so the moire fringes curve and
+    // flow like liquid; still sliced into sharp multi-color contour lines.
+    vec2 p = uv * 1.2;
+    p += 0.20 * vec2(sin(p.y*3.0 + t*0.4), cos(p.x*3.0 - t*0.3));   // domain warp
+    float a = sin(p.x*9.0 - t*1.8 + sin(p.y*2.2)*1.5);
+    float b = sin(p.y*9.5 + t*1.6 + cos(p.x*2.0)*1.5);
+    float c = sin((p.x + p.y)*7.0 - t*2.0);
+    float field = a + b + c;
+    float ph = 0.5 + field*0.16 + 0.03*t;
+    vec3 col = palette(ph) * 0.20;
+    col += palette(ph + 0.30) * smoothstep(0.085, 0.0, abs(fract(field*0.8) - 0.5)) * 0.50;
+    col += palette(ph + 0.60) * smoothstep(0.05, 0.0, abs(fract(field*1.6 + 0.5) - 0.5)) * 0.26;
+    return col;
+  }
+  vec3 sceneContour(vec2 uv, float t){
+    // topographic interference: a drifting field sliced into many equal-value bands,
+    // each band a different palette color -> a flowing multi-color contour map.
+    vec2 p = uv * 1.4;
+    float h = fbm(p*1.3 + vec2(t*0.08, -t*0.05));
+    h += 0.5 * fbm(p*2.7 - vec2(t*0.04, t*0.06));
+    h += 0.18 * sin(p.x*4.0 + t*0.3) * sin(p.y*4.0 - t*0.2);
+    float ph = h*1.35 + 0.04*t;                            // full-spectrum by height
+    vec3 col = palette(ph) * (0.34 + 0.5*h);
+    float line = smoothstep(0.06, 0.0, abs(fract(h*9.0) - 0.5));
+    col += palette(ph + 0.5) * line * 0.5;                 // crisp contour lines
+    return col;
+  }
   vec3 getScene(int s, vec2 uv, float t){
     if(s==0) return sceneTunnel(uv,t);
     if(s==1) return sceneKaleido(uv,t);
@@ -785,13 +985,16 @@
     if(s==9) return sceneSmoke(uv,t);
     if(s==10) return sceneAurora(uv,t);
     if(s==11) return sceneInterference(uv,t);
-    if(s==12) return sceneComets(uv,t);
-    return sceneCathedral(uv,t);
+    if(s==12) return sceneCathedral(uv,t);
+    if(s==13) return sceneLattice(uv,t);
+    if(s==14) return sceneRipple(uv,t);
+    if(s==15) return sceneWarp(uv,t);
+    return sceneContour(uv,t);
   }
 
   void main(){
     vec2 uv = (gl_FragCoord.xy*2.0 - u_res) / u_res.y;
-    float t = u_time;                        // u_time is the speed-integrated visual clock (vizTime)
+    float t = u_time * u_speed;              // motion speed is set per-look
     uv *= (1.0 - 0.012*u_energy);            // barely-there breathing, not an in/out pump
     vec3 col = getScene(u_sceneA, uv, t);
     if(u_blend > 0.002){ col = mix(col, getScene(u_sceneB, uv, t), u_blend); }  // 2nd scene only during a crossfade
@@ -992,6 +1195,8 @@
   let RW=2, RH=2, BW=1, BH=1;       // render res, bloom res
   let baseW=2, baseH=2;             // resolution before adaptive scaling
   let renderScale = 1.0;            // dynamic-quality multiplier (auto-tunes to the GPU)
+  const MAX_RENDER_W = 1200;
+  const MIN_RENDER_SCALE = 0.34;
   let sceneT, bloomA, bloomB;
 
   function allocTargets(){
@@ -1006,16 +1211,15 @@
   function applySize(){
     RW = Math.max(2, Math.round(baseW * renderScale));
     RH = Math.max(2, Math.round(baseH * renderScale));
-    BW = Math.max(1, Math.round(RW/3));
-    BH = Math.max(1, Math.round(RH/3));
+    BW = Math.max(1, Math.round(RW/4));
+    BH = Math.max(1, Math.round(RH/4));
     cvs.width = RW; cvs.height = RH;
     cvs.style.width = '100%'; cvs.style.height = '100%';
     allocTargets();
   }
   function resize(){
-    const maxW = 1366;
     const dpr = Math.min(window.devicePixelRatio || 1, 1.0);
-    let w = Math.round(Math.min(window.innerWidth * dpr, maxW));
+    let w = Math.round(Math.min(window.innerWidth * dpr, MAX_RENDER_W));
     let h = Math.round(w * (window.innerHeight / window.innerWidth));
     baseW = Math.max(2, w); baseH = Math.max(2, h);
     applySize();
@@ -1029,40 +1233,78 @@
      COLORWAYS  (IQ cosine palettes: a + b*cos(2pi(c*t + d)))
      We smoothly tween between these "throughout the night".
      ============================================================ */
-  // 4-stop multicolor gradients. Neon-forward, but capped away from white.
+  // 4-stop multicolor gradients. Bright neon across the whole set, but still capped away from white.
   const PALETTES = [
-    { name:'electric blue', c0:[0.03,0.06,0.18], c1:[0.10,0.24,0.72], c2:[0.02,0.80,1.00], c3:[0.56,0.22,0.98] },
-    { name:'violet rave',   c0:[0.07,0.02,0.18], c1:[0.30,0.06,0.68], c2:[0.92,0.24,0.98], c3:[0.04,0.82,1.00] },
-    { name:'neon ember',    c0:[0.11,0.03,0.02], c1:[0.60,0.10,0.02], c2:[1.00,0.42,0.04], c3:[1.00,0.04,0.56] },
-    { name:'woods',         c0:[0.02,0.08,0.03], c1:[0.14,0.40,0.10], c2:[0.98,0.70,0.14], c3:[0.10,0.96,0.38] },
-    { name:'cyan glow',     c0:[0.02,0.08,0.12], c1:[0.04,0.42,0.54], c2:[0.12,0.94,0.98], c3:[0.18,0.18,1.00] },
-    { name:'afterhours',    c0:[0.10,0.02,0.12], c1:[0.46,0.04,0.30], c2:[1.00,0.18,0.54], c3:[0.18,0.18,1.00] },
-    { name:'laser lime',    c0:[0.05,0.10,0.02], c1:[0.20,0.52,0.02], c2:[0.86,1.00,0.10], c3:[0.00,1.00,0.76] },
-    { name:'teal pulse',    c0:[0.02,0.08,0.09], c1:[0.02,0.34,0.34], c2:[0.08,0.94,0.78], c3:[0.48,0.18,1.00] },
-    { name:'hot coral',     c0:[0.12,0.04,0.04], c1:[0.60,0.12,0.08], c2:[1.00,0.40,0.18], c3:[1.00,0.08,0.82] },
-    { name:'red velvet',    c0:[0.10,0.02,0.04], c1:[0.46,0.02,0.12], c2:[0.98,0.12,0.26], c3:[0.78,0.04,1.00] },
-    { name:'pink static',   c0:[0.10,0.03,0.10], c1:[0.50,0.06,0.34], c2:[1.00,0.28,0.78], c3:[0.04,0.90,1.00] },
-    { name:'deep sea',      c0:[0.02,0.05,0.12], c1:[0.02,0.20,0.40], c2:[0.06,0.70,1.00], c3:[0.06,1.00,0.74] },
-    { name:'mono ice',      c0:[0.04,0.06,0.10], c1:[0.20,0.30,0.42], c2:[0.62,0.82,0.98], c3:[0.92,0.98,1.00] },
-    { name:'ultraviolet',   c0:[0.06,0.02,0.16], c1:[0.26,0.10,0.62], c2:[0.55,0.30,1.00], c3:[0.10,0.60,1.00] },
+    { name:'electric blue', c0:[0.05,0.08,0.22], c1:[0.10,0.30,0.88], c2:[0.00,0.92,1.00], c3:[0.72,0.24,1.00] },
+    { name:'violet rave',   c0:[0.10,0.04,0.22], c1:[0.38,0.08,0.86], c2:[1.00,0.18,0.96], c3:[0.08,0.88,1.00] },
+    { name:'neon ember',    c0:[0.14,0.04,0.04], c1:[0.74,0.12,0.02], c2:[1.00,0.56,0.04], c3:[1.00,0.10,0.62] },
+    { name:'woods neon',    c0:[0.05,0.10,0.05], c1:[0.16,0.54,0.12], c2:[1.00,0.76,0.12], c3:[0.14,1.00,0.46] },
+    { name:'cyan glow',     c0:[0.04,0.10,0.16], c1:[0.04,0.52,0.66], c2:[0.10,0.98,1.00], c3:[0.24,0.26,1.00] },
+    { name:'afterhours',    c0:[0.12,0.03,0.16], c1:[0.56,0.06,0.42], c2:[1.00,0.14,0.66], c3:[0.26,0.22,1.00] },
+    { name:'laser lime',    c0:[0.07,0.12,0.03], c1:[0.24,0.62,0.03], c2:[0.92,1.00,0.06], c3:[0.00,1.00,0.78] },
+    { name:'teal pulse',    c0:[0.04,0.10,0.12], c1:[0.04,0.42,0.46], c2:[0.04,1.00,0.82], c3:[0.66,0.18,1.00] },
+    { name:'hot coral',     c0:[0.14,0.05,0.04], c1:[0.72,0.16,0.08], c2:[1.00,0.48,0.20], c3:[1.00,0.12,0.86] },
+    { name:'red velvet',    c0:[0.12,0.03,0.06], c1:[0.58,0.04,0.18], c2:[1.00,0.12,0.30], c3:[0.94,0.06,1.00] },
+    { name:'pink static',   c0:[0.12,0.04,0.12], c1:[0.58,0.08,0.42], c2:[1.00,0.26,0.86], c3:[0.06,0.96,1.00] },
+    { name:'deep sea neon', c0:[0.03,0.08,0.18], c1:[0.04,0.28,0.56], c2:[0.04,0.82,1.00], c3:[0.00,1.00,0.82] },
+    { name:'ice laser',     c0:[0.06,0.10,0.16], c1:[0.18,0.40,0.60], c2:[0.60,0.92,1.00], c3:[0.86,0.28,1.00] },
+    { name:'ultraviolet',   c0:[0.08,0.03,0.20], c1:[0.30,0.10,0.76], c2:[0.66,0.24,1.00], c3:[0.12,0.72,1.00] },
+    { name:'acid magenta',  c0:[0.12,0.02,0.14], c1:[0.66,0.04,0.52], c2:[1.00,0.10,0.90], c3:[0.40,1.00,0.20] },
+    { name:'plasma gold',   c0:[0.14,0.06,0.02], c1:[0.80,0.30,0.02], c2:[1.00,0.84,0.08], c3:[1.00,0.16,0.72] },
+    { name:'toxic spring',  c0:[0.04,0.12,0.06], c1:[0.20,0.70,0.10], c2:[0.66,1.00,0.04], c3:[0.04,1.00,0.96] },
+    { name:'tangerine zap', c0:[0.14,0.05,0.02], c1:[0.90,0.32,0.04], c2:[1.00,0.62,0.10], c3:[0.10,0.92,1.00] },
+    { name:'vapor mint',    c0:[0.03,0.12,0.12], c1:[0.06,0.62,0.58], c2:[0.30,1.00,0.84], c3:[1.00,0.30,0.92] },
+    { name:'solar flare',   c0:[0.14,0.03,0.05], c1:[0.84,0.10,0.22], c2:[1.00,0.42,0.10], c3:[1.00,0.92,0.16] },
   ];
   function lerp(a,b,t){ return a+(b-a)*t; }
   function lerp3(A,B,t){ return [lerp(A[0],B[0],t), lerp(A[1],B[1],t), lerp(A[2],B[2],t)]; }
   function easeIO(t){ return t*t*(3-2*t); }
+  function hsv2rgb(h, s, v){            // h,s,v in 0..1 -> [r,g,b] in 0..1
+    h = ((h % 1) + 1) % 1;
+    const i = Math.floor(h*6), f = h*6 - i;
+    const p = v*(1-s), q = v*(1-f*s), u = v*(1-(1-f)*s);
+    switch(i % 6){
+      case 0: return [v,u,p];
+      case 1: return [q,v,p];
+      case 2: return [p,v,u];
+      case 3: return [p,q,v];
+      case 4: return [u,p,v];
+      default:return [v,p,q];
+    }
+  }
+  function mixRgb255(A,B,t){
+    return [
+      Math.round(lerp(A[0], B[0], t)),
+      Math.round(lerp(A[1], B[1], t)),
+      Math.round(lerp(A[2], B[2], t))
+    ];
+  }
+  function rgba255(C, a){
+    return `rgba(${C[0]},${C[1]},${C[2]},${a})`;
+  }
 
   let palToIdx = 0;
   let palFrom = PALETTES[0], palTo = PALETTES[0];
   let cur = { c0:[...palFrom.c0], c1:[...palFrom.c1], c2:[...palFrom.c2], c3:[...palFrom.c3] };
   let palTweenStart = -999, palTweenDur = 6.0;
-  const PAL_DWELL = 42.0; // seconds each colorway holds before next
+  let PAL_DWELL = 42.0; // seconds each colorway holds before next (user-adjustable)
   let nextPalAt = PAL_DWELL;
   let autoPalette = true;
   let paletteSubset = null;   // a look can pin a cohesive set of colorways
+  let rainbowMode = false;    // continuous full-spectrum hue rotation instead of fixed colorways
+  let shuffleMode = false;    // pick the next scene & colorway at random from the selected sets
 
+  function paletteTweenProgress(){
+    return Math.min(1, Math.max(0, (clock - palTweenStart) / palTweenDur));
+  }
   function startPaletteTween(idx){
     palFrom = { c0:[...cur.c0], c1:[...cur.c1], c2:[...cur.c2], c3:[...cur.c3] };
     if(idx == null){
-      if(paletteSubset && paletteSubset.length){
+      const pool = (paletteSubset && paletteSubset.length) ? paletteSubset : PALETTES.map((_, i) => i);
+      if(shuffleMode && pool.length > 1){
+        let n; do { n = pool[Math.floor(Math.random()*pool.length)]; } while(n === palToIdx);
+        palToIdx = n;
+      }else if(paletteSubset && paletteSubset.length){
         const pos = paletteSubset.indexOf(palToIdx);
         palToIdx = paletteSubset[(pos >= 0 ? pos + 1 : 0) % paletteSubset.length];
       }else{
@@ -1076,7 +1318,17 @@
     toast('colorway · ' + palTo.name);
   }
   function updatePalette(){
-    const t = easeIO(Math.min(1, (clock - palTweenStart)/palTweenDur));
+    if(rainbowMode){
+      // 4 stops spread a full turn apart => palette() spans the whole spectrum,
+      // and the base hue rotates so the gradient sweeps through the rainbow.
+      const base = clock / Math.max(6.0, PAL_DWELL);   // one full rotation per color interval
+      cur.c0 = hsv2rgb(base + 0.00, 1.0, 1.0);
+      cur.c1 = hsv2rgb(base + 0.25, 1.0, 1.0);
+      cur.c2 = hsv2rgb(base + 0.50, 1.0, 1.0);
+      cur.c3 = hsv2rgb(base + 0.75, 1.0, 1.0);
+      return;
+    }
+    const t = easeIO(paletteTweenProgress());
     cur.c0 = lerp3(palFrom.c0, palTo.c0, t);
     cur.c1 = lerp3(palFrom.c1, palTo.c1, t);
     cur.c2 = lerp3(palFrom.c2, palTo.c2, t);
@@ -1086,9 +1338,9 @@
   /* ============================================================
      SCENES (crossfade in-shader, no hard cuts)
      ============================================================ */
-  const SCENE_NAMES = ['tunnel','kaleido','plasma','grid','bars','prism','ribbons','pulse','lasers','smoke','aurora','interference','comets','cathedral'];
-  const CURATED_LOOP_ORDER = [2, 8, 10, 6, 11, 4, 12, 1, 13, 7, 5, 3, 9, 0];
-  const CURATED_LOOP_SELECTION = [2, 8, 10, 6, 11, 4, 12, 13, 7, 5];
+  const SCENE_NAMES = ['tunnel','kaleido','plasma','grid','bars','prism','ribbons','pulse','lasers','smoke','aurora','interference','cathedral','lattice','ripple','warp','contour'];
+  const CURATED_LOOP_ORDER = [2, 8, 10, 6, 11, 13, 14, 15, 16, 4, 1, 12, 7, 5, 3, 9, 0];
+  const CURATED_LOOP_SELECTION = [2, 8, 10, 6, 11, 13, 14, 15, 16, 4, 12, 7, 5];
   const sceneLoopEnabled = SCENE_NAMES.map(() => true);
   const sceneMenuToggle = document.getElementById('sceneMenuToggle');
   const sceneMenuPanel = document.getElementById('sceneMenuPanel');
@@ -1100,7 +1352,8 @@
   let sceneA = 2, sceneB = 2, blend = 0, blendEased = 0;   // start on plasma
   let transitioning = false, transStart = 0;
   let TRANS_DUR = 3.2;     // long, silky crossfade (set per-look)
-  let SCENE_DWELL = 22.0;  // seconds per scene (set per-look)
+  let SCENE_DWELL = 22.0;  // seconds per scene (set per-look, or overridden by the user)
+  let userSceneDwell = null;   // null => follow the look; number => user override persists across looks
   let nextSceneAt = SCENE_DWELL;
   let autoScene = true;
 
@@ -1161,6 +1414,57 @@
     setLoopEnabled(CURATED_LOOP_SELECTION);
     toast('loop · curated');
   });
+
+  // ---- settings: scene/color interval + rainbow wheel ----
+  const sceneIntervalRange = document.getElementById('sceneIntervalRange');
+  const sceneIntervalVal   = document.getElementById('sceneIntervalVal');
+  const palIntervalRange   = document.getElementById('palIntervalRange');
+  const palIntervalVal     = document.getElementById('palIntervalVal');
+  const logoIntervalRange  = document.getElementById('logoIntervalRange');
+  const logoIntervalVal    = document.getElementById('logoIntervalVal');
+  const rainbowToggle      = document.getElementById('rainbowToggle');
+  const shuffleToggle      = document.getElementById('shuffleToggle');
+  function syncSceneIntervalUI(){
+    if(!sceneIntervalRange) return;
+    sceneIntervalRange.value = String(Math.round(SCENE_DWELL));
+    sceneIntervalVal.textContent = Math.round(SCENE_DWELL) + 's';
+  }
+  if(sceneIntervalRange){
+    sceneIntervalRange.addEventListener('input', () => {
+      userSceneDwell = Number(sceneIntervalRange.value);
+      SCENE_DWELL = userSceneDwell;
+      sceneIntervalVal.textContent = userSceneDwell + 's';
+      nextSceneAt = clock + SCENE_DWELL;
+    });
+    palIntervalRange.addEventListener('input', () => {
+      PAL_DWELL = Number(palIntervalRange.value);
+      palIntervalVal.textContent = PAL_DWELL + 's';
+      nextPalAt = clock + PAL_DWELL;
+    });
+    logoIntervalRange.addEventListener('input', () => {
+      LOGO_INTERVAL = Number(logoIntervalRange.value) * 1000;
+      logoIntervalVal.textContent = logoIntervalRange.value + 's';
+      clearInterval(logoTimer);
+      logoTimer = setInterval(() => { if(logoAuto) flipLogo(); }, LOGO_INTERVAL);
+    });
+    rainbowToggle.addEventListener('click', () => {
+      rainbowMode = !rainbowMode;
+      rainbowToggle.classList.toggle('active', rainbowMode);
+      rainbowToggle.textContent = rainbowMode ? 'On' : 'Off';
+      if(!rainbowMode){                       // ease back to a real colorway
+        palFrom = { c0:[...cur.c0], c1:[...cur.c1], c2:[...cur.c2], c3:[...cur.c3] };
+        palTo = PALETTES[palToIdx];
+        palTweenStart = clock;
+      }
+      toast('rainbow · ' + (rainbowMode ? 'on' : 'off'));
+    });
+    shuffleToggle.addEventListener('click', () => {
+      shuffleMode = !shuffleMode;
+      shuffleToggle.classList.toggle('active', shuffleMode);
+      shuffleToggle.textContent = shuffleMode ? 'On' : 'Off';
+      toast('shuffle · ' + (shuffleMode ? 'on' : 'off'));
+    });
+  }
   sceneMenuList.addEventListener('click', (e) => {
     const previewBtn = e.target.closest('[data-preview]');
     if(previewBtn){
@@ -1195,11 +1499,16 @@
     const loopScenes = getLoopScenes();
     if(!loopScenes.length) return;
     const current = transitioning ? sceneB : sceneA;
-    const idx = loopScenes.indexOf(current);
-    const next = loopScenes[(idx >= 0 ? idx + 1 : 0) % loopScenes.length];
-    if(next === current && loopScenes.length === 1){
-      nextSceneAt = clock + SCENE_DWELL;
+    if(loopScenes.length === 1){
+      nextSceneAt = clock + SCENE_DWELL;   // only one scene selected → nothing to advance to
       return;
+    }
+    let next;
+    if(shuffleMode){
+      do { next = loopScenes[Math.floor(Math.random()*loopScenes.length)]; } while(next === current);
+    }else{
+      const idx = loopScenes.indexOf(current);
+      next = loopScenes[(idx >= 0 ? idx + 1 : 0) % loopScenes.length];
     }
     gotoScene(next);
   }
@@ -1222,22 +1531,22 @@
      ============================================================ */
   const LOOKS = [
     // soft flowing neon (the dreamy stuff Karl likes) — gentle, bloomy, no edge/posterize
-    { name:'FLOW',    scenes:[2,10,9,6,11,7], dwell:24, trans:3.4, palettes:[4,7,0,11,5],
+    { name:'FLOW',    scenes:[2,10,9,6,11,13,14,15,16,7], dwell:24, trans:3.4, palettes:[4,7,0,11,5],
       post:{ sharp:0.34, bloom:0.64, sat:1.34, contrast:1.05, black:0.00, bands:0, edge:0.00, ca:1.0, vig:1.00, strobe:0.00, grit:0.18, speed:0.60 } },
     // James Hype — sharp, punchy, fast cuts, light outline, mild strobe
     { name:'KINETIC', scenes:[4,8,3,5,11],    dwell:12, trans:1.8, palettes:[0,4,1,13],
       post:{ sharp:0.85, bloom:0.42, sat:1.16, contrast:1.22, black:0.06, bands:0, edge:0.55, ca:1.1, vig:1.05, strobe:0.22, grit:0.14, speed:0.94 } },
     // Mau P techno — dark, hypnotic, slow, posterized, crushed blacks, no grit
-    { name:'MINIMAL', scenes:[5,11,13,1,0],   dwell:32, trans:3.0, palettes:[12,4,7,13],
+    { name:'MINIMAL', scenes:[5,11,12,1,0],   dwell:32, trans:3.0, palettes:[12,4,7,13],
       post:{ sharp:0.60, bloom:0.30, sat:0.92, contrast:1.30, black:0.12, bands:5, edge:0.32, ca:0.6, vig:1.20, strobe:0.00, grit:0.00, speed:0.42 } },
     // Guetta festival — saturated, bloomy, energetic, strobe on peaks
-    { name:'RAVE',    scenes:[0,2,12,7,8,10], dwell:16, trans:2.4, palettes:[1,8,0,10,6],
+    { name:'RAVE',    scenes:[0,2,8,7,10,6],  dwell:16, trans:2.4, palettes:[1,8,0,10,6],
       post:{ sharp:0.45, bloom:0.88, sat:1.50, contrast:1.10, black:0.02, bands:0, edge:0.00, ca:1.3, vig:0.90, strobe:0.32, grit:0.18, speed:0.82 } },
     // Skrillex — gritty, glitchy, heavy RGB split, posterize, scanlines
-    { name:'GRIT',    scenes:[4,9,11,12,5],   dwell:14, trans:1.6, palettes:[2,9,5,1],
+    { name:'GRIT',    scenes:[4,9,11,5,12],   dwell:14, trans:1.6, palettes:[2,9,5,1],
       post:{ sharp:0.70, bloom:0.40, sat:1.12, contrast:1.26, black:0.10, bands:6, edge:0.50, ca:2.4, vig:1.10, strobe:0.40, grit:0.85, speed:0.74 } },
     // graphic ink / line-art — maximum sharp, strong outline + posterize, low sat
-    { name:'INK',     scenes:[5,11,3,13,4,1], dwell:18, trans:2.2, palettes:[12,0,4],
+    { name:'INK',     scenes:[5,11,3,12,4,1], dwell:18, trans:2.2, palettes:[12,0,4],
       post:{ sharp:1.00, bloom:0.26, sat:0.55, contrast:1.42, black:0.14, bands:4, edge:1.00, ca:0.8, vig:1.15, strobe:0.14, grit:0.30, speed:0.58 } },
   ];
   const post   = { ...LOOKS[0].post };   // live (lerped) post params
@@ -1263,12 +1572,15 @@
     const L = LOOKS[currentLook];
     Object.assign(postTo, L.post);
     if(snap) Object.assign(post, L.post);
-    SCENE_DWELL = L.dwell;
+    SCENE_DWELL = (userSceneDwell != null) ? userSceneDwell : L.dwell;
+    if(userSceneDwell == null) syncSceneIntervalUI();   // reflect the look's pace on the slider
     TRANS_DUR = L.trans;
     paletteSubset = (L.palettes && L.palettes.length) ? L.palettes : null;
-    setLoopEnabled(L.scenes);
+    if(snap){                       // boot only — set up the initial scene selection
+      setLoopEnabled(L.scenes);
+      gotoScene(L.scenes[0]);
+    }                               // a manual style switch keeps the user's selected scenes & current scene
     if(paletteSubset) startPaletteTween(paletteSubset[0]);
-    gotoScene(L.scenes[0]);
     nextSceneAt = clock + SCENE_DWELL;
     renderLookRow();
     if(!snap) toast('look · ' + L.name);
@@ -1287,6 +1599,7 @@
      layered LFOs + periodic build/drop so it breathes & surges
      ============================================================ */
   let energySmooth = 0.5;
+  let logoPulseSmooth = 0.0;
   function energyTarget(t){
     // slow, continuous swell — keeps it breathing with no in/out pumping or hard drops
     let e = 0.5 + 0.18*Math.sin(t*0.16) + 0.10*Math.sin(t*0.071 + 1.3);
@@ -1299,16 +1612,51 @@
   let micStream = null;
   let micFreq = null;
   let micLevel = 0.0;
-  let micPeak = 0.0;
+  let micKick = 0.0;
+  let micVisual = 0.0;
+  let micPrevLow = 0.0;
+  let micLastHistoryAt = -999.0;
+  let micHistory = [];
+  const MIC_WINDOW_SEC = 60.0;
+  const MIC_BODY_WINDOW_SEC = 8.0;
+  const MIC_SAMPLE_SEC = 0.20;
   const LOCAL_MIC_URL = 'http://127.0.0.1:8123/index.html?mic=1';
   const micHud = document.getElementById('micHud');
   const micHudFill = document.getElementById('micHudFill');
   const micHudState = document.getElementById('micHudState');
+  const micHudLevelText = document.getElementById('micHudLevelText');
+  const micHudAvgFill = document.getElementById('micHudAvgFill');
+  const micHudAvgText = document.getElementById('micHudAvgText');
+  const micHudLoudFill = document.getElementById('micHudLoudFill');
+  const micHudLoudText = document.getElementById('micHudLoudText');
+  const micHudAvgTick = document.getElementById('micHudAvgTick');
+  const MIC_HUD_LEVEL_GAIN = 1.25;
+  const MIC_HUD_AVG_GAIN = 4.2;
+  const MIC_HUD_LOUD_GAIN = 3.2;
+  let micHudTickTimer = null;
 
-  function updateMicHud(level){
-    micHud.classList.add('show');
+  function pulseMicHudAvgTick(){
+    if(!micHudAvgTick) return;
+    micHudAvgTick.classList.add('live');
+    clearTimeout(micHudTickTimer);
+    micHudTickTimer = setTimeout(() => micHudAvgTick.classList.remove('live'), 180);
+  }
+
+  function updateMicHud(level, avg = 0, loud = 0){
+    const levelRaw = Math.max(0, Math.min(1, level));
+    const avgRaw = Math.max(0, Math.min(1, avg));
+    const loudRaw = Math.max(0, Math.min(1, loud));
+    micHud.classList.toggle('show', micReactive || levelRaw > 0.001 || avgRaw > 0.001 || loudRaw > 0.001);
     micHudState.textContent = micReactive ? 'live' : 'off';
-    micHudFill.style.width = `${Math.round(Math.max(0, Math.min(1, level)) * 100)}%`;
+    const levelViz = Math.max(0, Math.min(1, levelRaw * MIC_HUD_LEVEL_GAIN));
+    const avgViz = Math.max(0, Math.min(1, avgRaw * MIC_HUD_AVG_GAIN));
+    const loudViz = Math.max(0, Math.min(1, loudRaw * MIC_HUD_LOUD_GAIN));
+    micHudFill.style.width = `${Math.round(levelViz * 100)}%`;
+    micHudLevelText.textContent = `${Math.round(levelRaw * 100)}%`;
+    micHudAvgFill.style.width = `${Math.round(avgViz * 100)}%`;
+    micHudAvgText.textContent = `${Math.round(avgRaw * 100)}%`;
+    micHudLoudFill.style.width = `${Math.round(loudViz * 100)}%`;
+    micHudLoudText.textContent = `${Math.round(loudRaw * 100)}%`;
   }
 
   function stopMicReactive(){
@@ -1325,7 +1673,15 @@
     micFreq = null;
     micBooted = false;
     micLevel = 0.0;
-    micPeak = 0.0;
+    micKick = 0.0;
+    micVisual = 0.0;
+    logoPulseSmooth = 0.0;
+    micPrevLow = 0.0;
+    micLastHistoryAt = -999.0;
+    micHistory = [];
+    clearTimeout(micHudTickTimer);
+    if(micHudAvgTick) micHudAvgTick.classList.remove('live');
+    micHud.classList.remove('show');
     updateMicHud(0);
   }
 
@@ -1353,7 +1709,7 @@
         const source = micCtx.createMediaStreamSource(micStream);
         micAnalyser = micCtx.createAnalyser();
         micAnalyser.fftSize = 512;
-        micAnalyser.smoothingTimeConstant = 0.72;
+        micAnalyser.smoothingTimeConstant = 0.84;
         micFreq = new Uint8Array(micAnalyser.frequencyBinCount);
         source.connect(micAnalyser);
         micBooted = true;
@@ -1402,13 +1758,82 @@
     mid = midN ? mid / midN : 0;
     high = highN ? high / highN : 0;
     const raw = low*0.90 + mid*0.48 + high*0.22;
-    const gated = Math.max(0, raw - 0.035);
-    micPeak = Math.max(gated, micPeak * 0.985 + 0.015);
-    const normalized = Math.min(1, gated / Math.max(0.10, micPeak * 0.72));
-    const transient = Math.max(0, normalized - micLevel);
-    micLevel += (normalized - micLevel) * 0.44;
-    updateMicHud(Math.max(micLevel, transient * 0.9));
-    return Math.max(0, Math.min(1, base + micLevel*1.15 + transient*1.05));
+    const gated = Math.max(0, raw - 0.028);
+
+    // Keep a rolling minute of samples so the visuals adapt to the room's average level
+    // instead of only chasing short-term peaks.
+    if(t - micLastHistoryAt >= MIC_SAMPLE_SEC){
+      micLastHistoryAt = t;
+      micHistory.push({ t, raw:gated, low });
+      pulseMicHudAvgTick();
+    }
+    while(micHistory.length && t - micHistory[0].t > MIC_WINDOW_SEC) micHistory.shift();
+
+    let avgRaw = gated;
+    let avgLow = low;
+    let bodyRaw = gated;
+    let bodyLow = low;
+    if(micHistory.length){
+      let rawSum = 0, lowSum = 0;
+      let bodyRawSum = 0, bodyLowSum = 0, bodyCount = 0;
+      const rawVals = [];
+      const lowVals = [];
+      for(const sample of micHistory){
+        rawSum += sample.raw;
+        lowSum += sample.low;
+        rawVals.push(sample.raw);
+        lowVals.push(sample.low);
+        if(t - sample.t <= MIC_BODY_WINDOW_SEC){
+          bodyRawSum += sample.raw;
+          bodyLowSum += sample.low;
+          bodyCount++;
+        }
+      }
+      rawVals.sort((a,b) => a - b);
+      lowVals.sort((a,b) => a - b);
+      const trimCount = Math.max(1, Math.floor(rawVals.length * 0.85));
+      let trimmedRaw = 0, trimmedLow = 0;
+      for(let i=0;i<trimCount;i++){
+        trimmedRaw += rawVals[i];
+        trimmedLow += lowVals[i];
+      }
+      avgRaw = trimmedRaw / trimCount;
+      avgLow = trimmedLow / trimCount;
+      bodyRaw = bodyCount ? bodyRawSum / bodyCount : avgRaw;
+      bodyLow = bodyCount ? bodyLowSum / bodyCount : avgLow;
+    }
+
+    // Blend a trimmed long average with a shorter "song body" average so kicks
+    // don't redefine the baseline, but drops still feel like a new louder state.
+    const avgBlendRaw = avgRaw * 0.68 + bodyRaw * 0.32;
+    const avgBlendLow = avgLow * 0.60 + bodyLow * 0.40;
+
+    // Main body follows the minute-scale average, so a loud room doesn't pin the visuals.
+    const normalized = Math.max(0, Math.min(1,
+      (gated - avgBlendRaw * 0.64) / Math.max(0.08, avgBlendRaw * 0.90 + 0.04)
+    ));
+
+    // Separate low-end transient detector for kick / heavy hits.
+    const lowRise = Math.max(0, low - micPrevLow);
+    const lowExcite = Math.max(0, low - avgBlendLow * 1.20 - 0.010);
+    const rawExcite = Math.max(0, gated - avgBlendRaw * 1.10 - 0.006);
+    const dropLift = Math.max(0, Math.min(1,
+      (bodyRaw - avgRaw * 1.18) / Math.max(0.05, avgRaw * 0.55 + 0.03)
+    ));
+    const loudGate = Math.max(0, Math.min(1, avgBlendRaw * 1.10 + 0.006));
+    const kickHit = Math.max(0, Math.min(1,
+      lowExcite * 3.1 + rawExcite * 2.0 + lowRise * 2.9
+    ));
+
+    micLevel += (normalized - micLevel) * 0.16;
+    micKick += (kickHit - micKick) * (kickHit > micKick ? 0.42 : 0.09);
+    micPrevLow += (low - micPrevLow) * 0.22;
+
+    const rawVisual = Math.max(0, Math.min(1, base + micLevel*0.90 + micKick*1.35 + dropLift*0.34));
+    micVisual += (rawVisual - micVisual) * (rawVisual > micVisual ? 0.22 : 0.10);
+
+    updateMicHud(Math.max(micLevel, micKick * 0.86), Math.max(0, Math.min(1, avgBlendRaw)), loudGate);
+    return micVisual;
   }
 
   /* ============================================================
@@ -1418,16 +1843,140 @@
   const logoTextLayer = document.getElementById('logoTextLayer');
   const logoImgLayer  = document.getElementById('logoImgLayer');
   const logoImg   = document.getElementById('logoImg');
+  const logoImgCanvas = document.getElementById('logoImgCanvas');
   const logoImgBase = document.getElementById('logoImgBase');
+  const logoImgCtx = logoImgCanvas.getContext('2d', { alpha:true, desynchronized:true });
+  const logoFxCanvas = document.createElement('canvas');
+  const logoFxCtx = logoFxCanvas.getContext('2d', { alpha:true, desynchronized:true });
+  const logoMaskCanvas = document.createElement('canvas');
+  const logoMaskCtx = logoMaskCanvas.getContext('2d', { alpha:true, desynchronized:true });
   let showingText = true;
   let logoAuto = true;
-  const LOGO_INTERVAL = 10000;
+  let LOGO_INTERVAL = 10000;   // ms between logo flips (user-adjustable)
   const LOGO_FADE_SEC = 1.1;
   const LOGO_GLOW_SWAP_SEC = 0.38;
   const LOGO_GLOW_FREEZE_SEC = 0.55;
+  const LOGO_FX_IDLE_FPS = 6;
+  const LOGO_FX_TWEEN_FPS = 12;
+  const LOGO_FX_MAX_W = 1100;
   let logoFreezeUntil = 0;   // pause glow-color/glitch updates while a logo fades in
   let cssLast = -1;          // throttle clock for all CSS-variable writes
   let logoGlowTimer = null;
+  let logoFxLastAt = -999;
+  let logoFxLastW = 0, logoFxLastH = 0;
+  let logoMaskDirty = true;
+  function logoPaletteNow(){
+    const to255 = v => Math.max(0, Math.min(255, Math.round(v * 255)));
+    const pt = paletteTweenProgress();
+    const logoT = easeIO(easeIO(pt));
+    const c1 = lerp3(palFrom.c1, palTo.c1, logoT).map(to255);
+    const c2 = lerp3(palFrom.c2, palTo.c2, logoT).map(to255);
+    const c3 = lerp3(palFrom.c3, palTo.c3, logoT).map(to255);
+    const core = c3.map(v => Math.round(v * 0.28 + 255 * 0.72));
+    const edge = mixRgb255(c1, c2, 0.58);
+    const hot = mixRgb255(c2, core, 0.42);
+    const tail = mixRgb255(c2, c3, 0.36);
+    const tailSoft = mixRgb255(c2, c3, 0.18);
+    return { c1, c2, c3, core, edge, hot, tail, tailSoft };
+  }
+
+  function updateLogoCanvasSize(force = false){
+    const bounds = logoImg.getBoundingClientRect();
+    const cssW = Math.round(bounds.width || logoImg.clientWidth || Math.min(window.innerWidth * 0.66, LOGO_FX_MAX_W));
+    if(!cssW) return false;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.0);
+    const targetW = Math.min(LOGO_FX_MAX_W, Math.max(520, Math.round(cssW * dpr)));
+    const targetH = Math.max(2, Math.round(targetW * (649 / 2403)));
+    if(!force && targetW === logoFxLastW && targetH === logoFxLastH) return false;
+    logoFxLastW = targetW;
+    logoFxLastH = targetH;
+    logoImgCanvas.width = targetW;
+    logoImgCanvas.height = targetH;
+    logoFxCanvas.width = targetW;
+    logoFxCanvas.height = targetH;
+    logoMaskCanvas.width = targetW;
+    logoMaskCanvas.height = targetH;
+    logoImgCtx.imageSmoothingEnabled = true;
+    logoImgCtx.imageSmoothingQuality = 'high';
+    logoFxCtx.imageSmoothingEnabled = true;
+    logoFxCtx.imageSmoothingQuality = 'high';
+    logoMaskCtx.imageSmoothingEnabled = true;
+    logoMaskCtx.imageSmoothingQuality = 'high';
+    logoMaskDirty = true;
+    return true;
+  }
+
+  function rebuildLogoMask(){
+    const w = logoMaskCanvas.width;
+    const h = logoMaskCanvas.height;
+    if(!w || !h || !logoImgBase.complete || !logoImgBase.naturalWidth) return;
+    logoMaskCtx.clearRect(0, 0, w, h);
+    logoMaskCtx.drawImage(logoImgBase, 0, 0, w, h);
+    logoMaskCtx.globalCompositeOperation = 'source-in';
+    logoMaskCtx.fillStyle = 'rgba(255,255,255,1)';
+    logoMaskCtx.fillRect(0, 0, w, h);
+    logoMaskCtx.globalCompositeOperation = 'source-over';
+    logoMaskDirty = false;
+  }
+
+  function renderWoodsLogo(force = false){
+    if(showingText || !logoImgBase.complete || !logoImgBase.naturalWidth || !logoImgCtx || !logoFxCtx) return;
+    const sizeChanged = updateLogoCanvasSize(force);
+    const paletteMix = paletteTweenProgress();
+    const paletteTweening = paletteMix < 0.999;
+    const targetFps = paletteTweening ? LOGO_FX_TWEEN_FPS : LOGO_FX_IDLE_FPS;
+    if(!force && !sizeChanged && clock - logoFxLastAt < 1 / targetFps) return;
+    logoFxLastAt = clock;
+
+    const w = logoFxCanvas.width;
+    const h = logoFxCanvas.height;
+    if(logoMaskDirty) rebuildLogoMask();
+    const { c1, c2, c3, edge, tailSoft } = logoPaletteNow();
+    const glowAlpha = clock < logoFreezeUntil ? 0.22 : 0.34;
+    const blurPx = clock < logoFreezeUntil ? 7 : 9;
+
+    logoFxCtx.clearRect(0, 0, w, h);
+    // Static gradient anchored to the logo bounds, following the active colorway
+    // (c1 -> c2 -> c3). No moving sheen layer, so no bright band sweeps across the mark.
+    const baseGrad = logoFxCtx.createLinearGradient(-w * 0.12, h * 0.14, w * 1.12, h * 0.86);
+    baseGrad.addColorStop(0.00, `rgb(${c1[0]},${c1[1]},${c1[2]})`);
+    baseGrad.addColorStop(0.30, `rgb(${edge[0]},${edge[1]},${edge[2]})`);
+    baseGrad.addColorStop(0.55, `rgb(${c2[0]},${c2[1]},${c2[2]})`);
+    baseGrad.addColorStop(0.80, `rgb(${tailSoft[0]},${tailSoft[1]},${tailSoft[2]})`);
+    baseGrad.addColorStop(1.00, `rgb(${c3[0]},${c3[1]},${c3[2]})`);
+    logoFxCtx.fillStyle = baseGrad;
+    logoFxCtx.fillRect(0, 0, w, h);
+
+    logoFxCtx.globalCompositeOperation = 'destination-in';
+    logoFxCtx.drawImage(logoMaskCanvas, 0, 0, w, h);
+    logoFxCtx.globalCompositeOperation = 'source-over';
+
+    logoImgCtx.clearRect(0, 0, w, h);
+
+    // KRL reads bright because it has a white-hot halo, not just a coloured edge.
+    // Mirror that here with layered white bloom behind the Woods mark.
+    logoImgCtx.save();
+    logoImgCtx.filter = `blur(${Math.round(blurPx * 2.2)}px)`;
+    logoImgCtx.globalAlpha = glowAlpha * 0.28;
+    logoImgCtx.drawImage(logoMaskCanvas, 0, 0, w, h);
+    logoImgCtx.restore();
+
+    logoImgCtx.save();
+    logoImgCtx.filter = `blur(${Math.round(blurPx * 1.05)}px)`;
+    logoImgCtx.globalAlpha = glowAlpha * 0.68;
+    logoImgCtx.drawImage(logoFxCanvas, 0, 0, w, h);
+    logoImgCtx.restore();
+
+    logoImgCtx.save();
+    logoImgCtx.globalAlpha = 0.12;
+    logoImgCtx.drawImage(logoMaskCanvas, 0, 0, w, h);
+    logoImgCtx.restore();
+
+    logoImgCtx.save();
+    logoImgCtx.globalAlpha = 1.0;
+    logoImgCtx.drawImage(logoFxCanvas, 0, 0, w, h);
+    logoImgCtx.restore();
+  }
 
   function setLogo(text){
     showingText = text;
@@ -1441,6 +1990,9 @@
     }
     logoTextLayer.className = 'layer ' + (text ? 'shown' : 'hidden');
     logoImgLayer.className  = 'layer ' + (text ? 'hidden' : 'shown');
+    if(!text){
+      renderWoodsLogo(true);
+    }
   }
   function flipLogo(){ setLogo(!showingText); }
 
@@ -1467,11 +2019,13 @@
     return c.toDataURL('image/png');
   }
   function setLogoAsset(src){
-    logoImg.style.setProperty('--logoMaskUrl', `url("${src}")`);
     logoImgBase.src = src;
+    logoMaskDirty = true;
   }
-  logoImgBase.addEventListener('error', () => { setLogoAsset(placeholderLogo()); }, { once:true });
-  setLogoAsset('logo.png');
+  const preloadedLogo = new Image();
+  preloadedLogo.addEventListener('load', () => { setLogoAsset('logo.png'); renderWoodsLogo(true); }, { once:true });
+  preloadedLogo.addEventListener('error', () => { setLogoAsset(placeholderLogo()); }, { once:true });
+  preloadedLogo.src = 'logo.png';
 
   function glitch(force = false){
     if(!showingText) return;                 // never glitch the Woods PNG logo
@@ -1520,7 +2074,7 @@
         else document.exitFullscreen().catch(()=>{});
         break;
       case ' ': e.preventDefault(); nextScene(); nextSceneAt = clock + SCENE_DWELL; break;
-      case 'c': startPaletteTween(); nextPalAt = clock + PAL_DWELL; break;
+      case 'c': startPaletteTween((palToIdx + 1) % PALETTES.length); nextPalAt = clock + PAL_DWELL; break;  // manual cycle walks ALL colorways, not just the look's subset
       case 'v': setSceneMenuOpen(!sceneMenuOpen); break;
       case 'l': flipLogo(); break;
       case 'g': glitch(true); break;
@@ -1574,15 +2128,16 @@
       fps = fpsFrames / fpsAccum;
       fpsAccum = 0; fpsFrames = 0;
       if(clock - lastScaleAt > 1.5){
-        if(fps < 50 && renderScale > 0.45){ renderScale = Math.max(0.45, renderScale - 0.12); applySize(); lastScaleAt = clock; }
-        else if(fps > 58 && renderScale < 1.0){ renderScale = Math.min(1.0, renderScale + 0.10); applySize(); lastScaleAt = clock; }
+        if(fps < 36 && renderScale > MIN_RENDER_SCALE){ renderScale = Math.max(MIN_RENDER_SCALE, renderScale - 0.18); applySize(); lastScaleAt = clock; }
+        else if(fps < 48 && renderScale > MIN_RENDER_SCALE){ renderScale = Math.max(MIN_RENDER_SCALE, renderScale - 0.10); applySize(); lastScaleAt = clock; }
+        else if(fps > 58 && renderScale < 1.0){ renderScale = Math.min(1.0, renderScale + 0.08); applySize(); lastScaleAt = clock; }
       }
       if(fpsShown) fpsEl.textContent = Math.round(fps) + ' fps · ' + Math.round(renderScale*100) + '% res';
     }
 
     // energy
     const target = micEnergyTarget(clock);
-    energySmooth += (target - energySmooth) * Math.min(1, dt*(micReactive ? 4.4 : 1.2));
+    energySmooth += (target - energySmooth) * Math.min(1, dt*(micReactive ? 2.8 : 1.2));
     const E = energySmooth;
 
     // ease post-processing params toward the active look (smooth style switches)
@@ -1592,27 +2147,45 @@
     // scheduling
     if(autoScene && !transitioning && clock >= nextSceneAt) autoNextScene();
     updateScene();
-    if(autoPalette && clock >= nextPalAt){ startPaletteTween(); nextPalAt = clock + PAL_DWELL; }
+    if(!rainbowMode && autoPalette && clock >= nextPalAt){ startPaletteTween(); nextPalAt = clock + PAL_DWELL; }
     updatePalette();
+
+    // Keep logo motion smooth by updating the scale every frame. Only the more
+    // expensive accent/glow colour writes stay throttled.
+    const logoPulseTarget = micReactive
+      ? Math.max(micKick * 1.18, Math.max(0, micVisual - 0.16) * 0.92)
+      : Math.max(0, E - 0.42) * 0.20;
+    logoPulseSmooth += (logoPulseTarget - logoPulseSmooth) * (logoPulseTarget > logoPulseSmooth ? 0.26 : 0.11);
+    const logoScale = micReactive
+      ? 1 + E*0.030 + logoPulseSmooth*0.145
+      : 1 + E*0.072;
+    logoInner.style.scale = logoScale.toFixed(4);
 
     // drive logo CSS. Accent colors feed the glow shadows/filters, so writing them
     // every frame forces glow repaints that flicker during a crossfade. Update them
     // at ~11fps, and freeze them entirely while a logo is fading in.
-    // throttle ALL CSS-variable writes (~13fps) — cuts main-thread style/paint churn on weak Macs
+    // throttle the heavier CSS-variable writes (~13fps) — cuts main-thread style/paint churn on weak Macs
     if(clock - cssLast > 0.075){
       cssLast = clock;
       const root = document.documentElement.style;
       root.setProperty('--energy', E.toFixed(3));
-      root.setProperty('--logoScale', (1 + E*0.035).toFixed(4));
       if(clock > logoFreezeUntil){   // hold the glow colour steady through a logo fade (anti-flicker)
         const acc = cur.c3, acc2 = cur.c2;   // glow tints from the colorway's bright stops
         const to255 = v => Math.max(0, Math.min(255, Math.round(v*255)));
         const accRgb = `${to255(acc[0])},${to255(acc[1])},${to255(acc[2])}`;
+        const core = [
+          Math.round(255 * 0.72 + to255(acc[0]) * 0.28),
+          Math.round(255 * 0.72 + to255(acc[1]) * 0.28),
+          Math.round(255 * 0.72 + to255(acc[2]) * 0.28)
+        ];
         root.setProperty('--accent',  `rgb(${accRgb})`);
+        root.setProperty('--accentCore', `rgb(${core[0]},${core[1]},${core[2]})`);
         root.setProperty('--accentSoft', `rgba(${accRgb},0.22)`);
         root.setProperty('--accent2', `rgb(${to255(acc2[0])},${to255(acc2[1])},${to255(acc2[2])})`);
       }
     }
+
+    if(!showingText) renderWoodsLogo();
 
     // ---- PASS 1: scene -> sceneT ----
     gl.useProgram(sceneProg);
