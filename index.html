@@ -4,6 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
 <title>KRL // VFX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
   @font-face{
     font-family:"Tourner";
@@ -71,6 +74,10 @@
     will-change: scale, translate;
     animation: float 13s ease-in-out infinite;
   }
+  .logoInner.outroMode{
+    animation:none;
+    translate:0 0;
+  }
   @keyframes float{
     0%,100%{ translate:0 -0.7%; }
     50%    { translate:0  0.7%; }
@@ -98,6 +105,63 @@
        0 0 20px rgba(255,255,255,0.60),
        0 0 48px rgba(255,255,255,0.35);
     user-select:none;
+  }
+
+  #logoOutroLayer{
+    width:min(84vw, 1180px);
+  }
+  .outroCard{
+    display:grid;
+    gap:min(1.5vh, 14px);
+    justify-items:center;
+    text-align:center;
+    user-select:none;
+  }
+  .outroPrimary{
+    font-family:"Syne","Arial Black",sans-serif;
+    font-size:min(13vw, 14.5vh);
+    line-height:0.92;
+    letter-spacing:0.025em;
+    color:#fff;
+    text-wrap:balance;
+    text-shadow:
+      0 0 6px rgba(255,255,255,0.88),
+      0 0 12px var(--accentCore),
+      0 0 24px var(--accent);
+  }
+  .outroSite{
+    font-family:"Space Mono","Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size:min(3.3vw, 3.4vh);
+    font-weight:700;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:rgba(255,255,255,0.96);
+    text-shadow:
+      0 0 4px rgba(255,255,255,0.68),
+      0 0 8px var(--accent);
+  }
+  .outroPrimary,
+  .outroSite{
+    position:relative;
+    min-height:1em;
+  }
+  .typingLine{
+    display:inline-block;
+  }
+  .typingLine.caret::after{
+    content:"";
+    display:inline-block;
+    width:0.12em;
+    height:0.9em;
+    margin-left:0.12em;
+    vertical-align:-0.08em;
+    background:rgba(255,255,255,0.96);
+    box-shadow:0 0 4px rgba(255,255,255,0.48), 0 0 8px var(--accent);
+    animation: caretBlink .9s steps(1,end) infinite;
+  }
+  @keyframes caretBlink{
+    0%,46%{ opacity:1; }
+    47%,100%{ opacity:0; }
   }
 
   /* ---- Grand Woods PNG logo ---- */
@@ -358,6 +422,25 @@
     text-transform:uppercase;
     cursor:pointer;
   }
+  .settingTime{
+    justify-self:end;
+    width:132px;
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:6px;
+    background:rgba(255,255,255,0.08);
+    color:#fff;
+    padding:7px 9px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+  }
+  .settingTime::-webkit-calendar-picker-indicator{
+    filter:invert(1);
+    opacity:0.8;
+    cursor:pointer;
+  }
   #lookSection{ margin-bottom:13px; }
   #lookSectionLabel{
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -531,6 +614,9 @@
     gap:11px;
     margin-bottom:9px;
   }
+  .timingRow{
+    grid-template-columns:84px 1fr 78px auto;
+  }
   .settingName{
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size:11px; font-weight:700; letter-spacing:0.04em;
@@ -553,6 +639,20 @@
   .settingVal{
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     font-size:11px; font-weight:700; color:#fff; min-width:34px; text-align:right;
+  }
+  .settingDuration{
+    width:78px;
+    justify-self:end;
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:6px;
+    background:rgba(255,255,255,0.08);
+    color:#fff;
+    padding:7px 8px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.04em;
+    text-align:right;
   }
   .settingToggle{
     border:1px solid rgba(255,255,255,0.16);
@@ -674,6 +774,12 @@
       <div class="layer shown" id="logoTextLayer">
         <div class="frostText" id="frostText" data-text="KRL">KRL</div>
       </div>
+      <div class="layer hidden" id="logoOutroLayer">
+        <div class="outroCard" id="logoOutroCard">
+          <div class="outroPrimary"><span class="typingLine" id="outroPrimaryLine">THANK YOU FOR COMING</span></div>
+          <div class="outroSite"><span class="typingLine" id="outroSecondaryLine">KRL-DJ.COM</span></div>
+        </div>
+      </div>
       <div class="layer hidden" id="logoImgLayer">
         <div id="logoImg" aria-label="logo">
           <canvas id="logoImgCanvas"></canvas>
@@ -731,19 +837,22 @@
     </div>
     <div id="settingsSection">
       <div id="settingsLabel">Timing &amp; color</div>
-      <div class="settingRow">
+      <div class="settingRow timingRow">
         <label class="settingName" for="sceneIntervalRange">Scene every</label>
-        <input id="sceneIntervalRange" class="settingRange" type="range" min="3" max="60" step="1" value="24" />
+        <input id="sceneIntervalRange" class="settingRange" type="range" min="3" max="10800" step="1" value="24" />
+        <input id="sceneIntervalInput" class="settingDuration" type="text" inputmode="numeric" value="0:24" aria-label="Scene interval duration" />
         <span class="settingVal" id="sceneIntervalVal">24s</span>
       </div>
-      <div class="settingRow">
+      <div class="settingRow timingRow">
         <label class="settingName" for="palIntervalRange">Color every</label>
-        <input id="palIntervalRange" class="settingRange" type="range" min="3" max="90" step="1" value="42" />
+        <input id="palIntervalRange" class="settingRange" type="range" min="3" max="10800" step="1" value="42" />
+        <input id="palIntervalInput" class="settingDuration" type="text" inputmode="numeric" value="0:42" aria-label="Color interval duration" />
         <span class="settingVal" id="palIntervalVal">42s</span>
       </div>
-      <div class="settingRow">
+      <div class="settingRow timingRow">
         <label class="settingName" for="logoIntervalRange">Logo every</label>
-        <input id="logoIntervalRange" class="settingRange" type="range" min="3" max="40" step="1" value="10" />
+        <input id="logoIntervalRange" class="settingRange" type="range" min="3" max="10800" step="1" value="10" />
+        <input id="logoIntervalInput" class="settingDuration" type="text" inputmode="numeric" value="0:10" aria-label="Logo interval duration" />
         <span class="settingVal" id="logoIntervalVal">10s</span>
       </div>
       <div class="settingRow">
@@ -780,6 +889,16 @@
         <span class="settingName">KRL lock</span>
         <span></span>
         <button class="settingToggle" id="krlLockToggle" type="button">Off</button>
+      </div>
+      <div class="settingRow">
+        <span class="settingName">Goodbye message</span>
+        <span></span>
+        <button class="settingToggle" id="outroToggle" type="button">Off</button>
+      </div>
+      <div class="settingRow">
+        <label class="settingName" for="outroTimeInput">Goodbye at</label>
+        <span></span>
+        <input id="outroTimeInput" class="settingTime" type="time" step="60" value="01:30" />
       </div>
       <div class="settingRow">
         <span class="settingName">Woods white glow</span>
@@ -830,7 +949,7 @@
 (function(){
   const cvs = document.getElementById('gl');
   const fatal = document.getElementById('fatal');
-  const gl = cvs.getContext('webgl2', { antialias:false, alpha:false, powerPreference:'high-performance' });
+  const gl = cvs.getContext('webgl2', { antialias:false, alpha:false, depth:false, stencil:false, powerPreference:'high-performance' });
   if(!gl){ fatal.style.display='grid'; return; }
 
   /* ============================================================
@@ -1547,21 +1666,20 @@
     if(s==1) return sceneKaleido(uv,t);
     if(s==2) return scenePlasma(uv,t);
     if(s==3) return sceneGrid(uv,t);
-    if(s==4) return sceneBars(uv,t);
-    if(s==5) return scenePrism(uv,t);
-    if(s==6) return sceneRibbons(uv,t);
-    if(s==7) return scenePulse(uv,t);
-    if(s==8) return sceneLasers(uv,t);
-    if(s==9) return sceneSmoke(uv,t);
-    if(s==10) return sceneLaserHaze(uv,t);
-    if(s==11) return sceneAurora(uv,t);
-    if(s==12) return sceneInterference(uv,t);
-    if(s==13) return scenePhase(uv,t);
-    if(s==14) return sceneLattice(uv,t);
-    if(s==15) return sceneRipple(uv,t);
-    if(s==16) return sceneWarp(uv,t);
-    if(s==17) return sceneContour(uv,t);
-    if(s==18) return sceneTunnelV2(uv,t);
+    if(s==4) return scenePrism(uv,t);
+    if(s==5) return sceneRibbons(uv,t);
+    if(s==6) return scenePulse(uv,t);
+    if(s==7) return sceneLasers(uv,t);
+    if(s==8) return sceneSmoke(uv,t);
+    if(s==9) return sceneLaserHaze(uv,t);
+    if(s==10) return sceneAurora(uv,t);
+    if(s==11) return sceneInterference(uv,t);
+    if(s==12) return scenePhase(uv,t);
+    if(s==13) return sceneLattice(uv,t);
+    if(s==14) return sceneRipple(uv,t);
+    if(s==15) return sceneWarp(uv,t);
+    if(s==16) return sceneContour(uv,t);
+    if(s==17) return sceneTunnelV2(uv,t);
     return sceneRaveLasers(uv,t);
   }
   vec3 getScene(int s, vec2 uv, float t){
@@ -1790,6 +1908,8 @@
   let RW=2, RH=2, BW=1, BH=1;       // render res, bloom res
   let baseW=2, baseH=2;             // resolution before adaptive scaling
   let renderScale = 1.0;            // dynamic-quality multiplier (auto-tunes to the GPU)
+  let transScale = 1.0;             // extra resolution drop DURING a crossfade only (invisible in a dissolve)
+  const TRANS_RES = 0.65;           // render at 65% while two scenes blend → no transition tank
   const MAX_RENDER_W = 1200;
   const MIN_RENDER_SCALE = 0.34;
   const HARD_MAX_RENDER_SCALE = 2.0;
@@ -1811,8 +1931,8 @@
   }
 
   function applySize(){
-    RW = Math.max(2, Math.round(baseW * renderScale));
-    RH = Math.max(2, Math.round(baseH * renderScale));
+    RW = Math.max(2, Math.round(baseW * renderScale * transScale));
+    RH = Math.max(2, Math.round(baseH * renderScale * transScale));
     BW = Math.max(1, Math.round(RW/4));
     BH = Math.max(1, Math.round(RH/4));
     cvs.width = RW; cvs.height = RH;
@@ -1852,11 +1972,13 @@
     { name:'ice laser',     c0:[0.06,0.10,0.16], c1:[0.18,0.40,0.60], c2:[0.60,0.92,1.00], c3:[0.86,0.28,1.00] },
     { name:'ultraviolet',   c0:[0.08,0.03,0.20], c1:[0.30,0.10,0.76], c2:[0.66,0.24,1.00], c3:[0.12,0.72,1.00] },
     { name:'acid magenta',  c0:[0.12,0.02,0.14], c1:[0.66,0.04,0.52], c2:[1.00,0.10,0.90], c3:[0.40,1.00,0.20] },
+    { name:'velvet rose',   c0:[0.14,0.03,0.14], c1:[0.98,0.33,0.78], c2:[0.89,0.22,0.54], c3:[0.73,0.11,0.45] },
     { name:'plasma gold',   c0:[0.14,0.06,0.02], c1:[0.80,0.30,0.02], c2:[1.00,0.84,0.08], c3:[1.00,0.16,0.72] },
     { name:'toxic spring',  c0:[0.04,0.12,0.06], c1:[0.20,0.70,0.10], c2:[0.66,1.00,0.04], c3:[0.04,1.00,0.96] },
     { name:'tangerine zap', c0:[0.14,0.05,0.02], c1:[0.90,0.32,0.04], c2:[1.00,0.62,0.10], c3:[0.10,0.92,1.00] },
     { name:'vapor mint',    c0:[0.03,0.12,0.12], c1:[0.06,0.62,0.58], c2:[0.30,1.00,0.84], c3:[1.00,0.30,0.92] },
     { name:'solar flare',   c0:[0.14,0.03,0.05], c1:[0.84,0.10,0.22], c2:[1.00,0.42,0.10], c3:[1.00,0.92,0.16] },
+    { name:'instagram heat', c0:[0.16,0.06,0.26], c1:[0.51,0.23,0.71], c2:[0.99,0.11,0.11], c3:[0.99,0.69,0.27] },
     { name:'racker',        c0:[0.22,0.00,0.02], c1:[0.92,0.00,0.00], c2:[0.58,0.00,0.54], c3:[0.20,0.00,0.99] },
   ];
   function lerp(a,b,t){ return a+(b-a)*t; }
@@ -1956,9 +2078,9 @@
   /* ============================================================
      SCENES (crossfade in-shader, no hard cuts)
      ============================================================ */
-  const SCENE_NAMES = ['tunnel','kaleido','plasma','grid','bars','prism','ribbons','pulse','lasers','smoke','laser haze','aurora','interference','phase','lattice','ripple','warp','contour','tunnel v2','rave lasers'];
-  const CURATED_LOOP_ORDER = [19, 18, 2, 8, 11, 6, 12, 13, 14, 15, 16, 17, 4, 1, 7, 5, 3, 9, 0];
-  const CURATED_LOOP_SELECTION = [19, 18, 2, 8, 11, 6, 12, 13, 14, 15, 16, 4, 7, 5];
+  const SCENE_NAMES = ['tunnel','kaleido','plasma','grid','prism','ribbons','pulse','lasers','smoke','laser haze','aurora','interference','phase','lattice','ripple','warp','contour','tunnel v2','rave lasers'];
+  const CURATED_LOOP_ORDER = [18, 17, 2, 7, 10, 5, 11, 12, 13, 14, 15, 16, 1, 6, 4, 3, 8, 0];
+  const CURATED_LOOP_SELECTION = [18, 17, 2, 7, 10, 5, 11, 12, 13, 14, 15, 6, 4];
   const sceneLoopEnabled = SCENE_NAMES.map(() => true);
   const paletteDropdownToggle = document.getElementById('paletteDropdownToggle');
   const paletteDropdownMeta = document.getElementById('paletteDropdownMeta');
@@ -2005,7 +2127,9 @@
       sceneFlowEnabled,
       krlGlitchEnabled,
       krlLockEnabled,
-      woodsWhiteMode
+      woodsWhiteMode,
+      outroEnabled,
+      outroTime
     });
   }
 
@@ -2191,10 +2315,13 @@
 
   // ---- settings: scene/color interval + rainbow wheel ----
   const sceneIntervalRange = document.getElementById('sceneIntervalRange');
+  const sceneIntervalInput = document.getElementById('sceneIntervalInput');
   const sceneIntervalVal   = document.getElementById('sceneIntervalVal');
   const palIntervalRange   = document.getElementById('palIntervalRange');
+  const palIntervalInput   = document.getElementById('palIntervalInput');
   const palIntervalVal     = document.getElementById('palIntervalVal');
   const logoIntervalRange  = document.getElementById('logoIntervalRange');
+  const logoIntervalInput  = document.getElementById('logoIntervalInput');
   const logoIntervalVal    = document.getElementById('logoIntervalVal');
   const rainbowToggle      = document.getElementById('rainbowToggle');
   const shuffleToggle      = document.getElementById('shuffleToggle');
@@ -2203,38 +2330,146 @@
   const sceneFlowToggle    = document.getElementById('sceneFlowToggle');
   const krlGlitchToggle    = document.getElementById('krlGlitchToggle');
   const krlLockToggle      = document.getElementById('krlLockToggle');
+  const outroToggle        = document.getElementById('outroToggle');
+  const outroTimeInput     = document.getElementById('outroTimeInput');
   const woodsWhiteToggle   = document.getElementById('woodsWhiteToggle');
   let velocityTransitionEnabled = false;
   let sceneFlowEnabled = false;
   let krlGlitchEnabled = true;
   let krlLockEnabled = false;
   let woodsWhiteMode = false;
+  let outroEnabled = false;
+  let outroTime = '01:30';
+  const MIN_INTERVAL_SEC = 3;
+  const MAX_INTERVAL_SEC = 10800;
+  function parseClockMinutes(value){
+    if(typeof value !== 'string') return null;
+    const match = value.match(/^(\d{2}):(\d{2})$/);
+    if(!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if(hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
+    return hours * 60 + minutes;
+  }
+  function computeOutroShouldShow(date = new Date()){
+    if(!outroEnabled) return false;
+    const triggerMinutes = parseClockMinutes(outroTime);
+    if(triggerMinutes == null) return false;
+    return (date.getHours() * 60 + date.getMinutes()) >= triggerMinutes;
+  }
+  function syncOutroUi(){
+    if(outroToggle){
+      outroToggle.classList.toggle('active', outroEnabled);
+      outroToggle.textContent = outroEnabled ? 'On' : 'Off';
+    }
+    if(outroTimeInput){
+      outroTimeInput.value = outroTime;
+      outroTimeInput.disabled = !outroEnabled;
+      outroTimeInput.style.opacity = outroEnabled ? '1' : '0.45';
+    }
+  }
+  function formatDurationShort(totalSeconds){
+    const sec = Math.max(0, Math.round(totalSeconds));
+    const hours = Math.floor(sec / 3600);
+    const minutes = Math.floor((sec % 3600) / 60);
+    const seconds = sec % 60;
+    if(hours > 0) return `${hours}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+    return `${minutes}:${String(seconds).padStart(2,'0')}`;
+  }
+  function formatDurationLabel(totalSeconds){
+    const sec = Math.max(0, Math.round(totalSeconds));
+    const hours = Math.floor(sec / 3600);
+    const minutes = Math.floor((sec % 3600) / 60);
+    const seconds = sec % 60;
+    if(hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if(minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+  }
+  function parseDurationInput(value){
+    if(typeof value !== 'string') return null;
+    const clean = value.trim();
+    if(!clean) return null;
+    if(/^\d+$/.test(clean)) return Number(clean);
+    const parts = clean.split(':').map(v => v.trim());
+    if(parts.some(v => !/^\d+$/.test(v))) return null;
+    if(parts.length === 2){
+      const [minutes, seconds] = parts.map(Number);
+      if(seconds > 59) return null;
+      return minutes * 60 + seconds;
+    }
+    if(parts.length === 3){
+      const [hours, minutes, seconds] = parts.map(Number);
+      if(minutes > 59 || seconds > 59) return null;
+      return hours * 3600 + minutes * 60 + seconds;
+    }
+    return null;
+  }
+  function clampIntervalSeconds(value){
+    return Math.max(MIN_INTERVAL_SEC, Math.min(MAX_INTERVAL_SEC, Math.round(value)));
+  }
+  function syncIntervalControl(rangeEl, inputEl, valueEl, seconds){
+    const clamped = clampIntervalSeconds(seconds);
+    if(rangeEl) rangeEl.value = String(clamped);
+    if(inputEl) inputEl.value = formatDurationShort(clamped);
+    if(valueEl) valueEl.textContent = formatDurationLabel(clamped);
+  }
   function syncSceneIntervalUI(){
-    if(!sceneIntervalRange) return;
-    sceneIntervalRange.value = String(Math.round(SCENE_DWELL));
-    sceneIntervalVal.textContent = Math.round(SCENE_DWELL) + 's';
+    syncIntervalControl(sceneIntervalRange, sceneIntervalInput, sceneIntervalVal, SCENE_DWELL);
+  }
+  function applySceneInterval(seconds){
+    userSceneDwell = clampIntervalSeconds(seconds);
+    SCENE_DWELL = userSceneDwell;
+    syncIntervalControl(sceneIntervalRange, sceneIntervalInput, sceneIntervalVal, SCENE_DWELL);
+    nextSceneAt = clock + SCENE_DWELL;
+    persistUiState();
+  }
+  function applyPaletteInterval(seconds){
+    PAL_DWELL = clampIntervalSeconds(seconds);
+    syncIntervalControl(palIntervalRange, palIntervalInput, palIntervalVal, PAL_DWELL);
+    nextPalAt = clock + PAL_DWELL;
+    persistUiState();
+  }
+  function applyLogoInterval(seconds){
+    const logoSeconds = clampIntervalSeconds(seconds);
+    LOGO_INTERVAL = logoSeconds * 1000;
+    syncIntervalControl(logoIntervalRange, logoIntervalInput, logoIntervalVal, logoSeconds);
+    clearInterval(logoTimer);
+    logoTimer = setInterval(() => { if(logoAuto) flipLogo(); }, LOGO_INTERVAL);
+    persistUiState();
+  }
+  function bindDurationInput(inputEl, getter, applyFn){
+    if(!inputEl) return;
+    const commit = () => {
+      const parsed = parseDurationInput(inputEl.value);
+      if(parsed == null){
+        inputEl.value = formatDurationShort(getter());
+        toast('time format · use ss / mm:ss / hh:mm:ss');
+        return;
+      }
+      applyFn(parsed);
+    };
+    inputEl.addEventListener('change', commit);
+    inputEl.addEventListener('blur', commit);
+    inputEl.addEventListener('keydown', (e) => {
+      if(e.key === 'Enter'){
+        e.preventDefault();
+        commit();
+      }
+    });
   }
   if(sceneIntervalRange){
     sceneIntervalRange.addEventListener('input', () => {
-      userSceneDwell = Number(sceneIntervalRange.value);
-      SCENE_DWELL = userSceneDwell;
-      sceneIntervalVal.textContent = userSceneDwell + 's';
-      nextSceneAt = clock + SCENE_DWELL;
-      persistUiState();
+      applySceneInterval(Number(sceneIntervalRange.value));
     });
     palIntervalRange.addEventListener('input', () => {
-      PAL_DWELL = Number(palIntervalRange.value);
-      palIntervalVal.textContent = PAL_DWELL + 's';
-      nextPalAt = clock + PAL_DWELL;
-      persistUiState();
+      applyPaletteInterval(Number(palIntervalRange.value));
     });
     logoIntervalRange.addEventListener('input', () => {
-      LOGO_INTERVAL = Number(logoIntervalRange.value) * 1000;
-      logoIntervalVal.textContent = logoIntervalRange.value + 's';
-      clearInterval(logoTimer);
-      logoTimer = setInterval(() => { if(logoAuto) flipLogo(); }, LOGO_INTERVAL);
-      persistUiState();
+      applyLogoInterval(Number(logoIntervalRange.value));
     });
+    bindDurationInput(sceneIntervalInput, () => SCENE_DWELL, applySceneInterval);
+    bindDurationInput(palIntervalInput, () => PAL_DWELL, applyPaletteInterval);
+    bindDurationInput(logoIntervalInput, () => LOGO_INTERVAL / 1000, applyLogoInterval);
     rainbowToggle.addEventListener('click', () => {
       rainbowMode = !rainbowMode;
       rainbowToggle.classList.toggle('active', rainbowMode);
@@ -2293,19 +2528,36 @@
       krlLockEnabled = !krlLockEnabled;
       krlLockToggle.classList.toggle('active', krlLockEnabled);
       krlLockToggle.textContent = krlLockEnabled ? 'On' : 'Off';
-      if(krlLockEnabled) setLogo(true);
+      if(krlLockEnabled && !outroActive) setLogoMode('krl');
       persistUiState();
       toast('krl lock · ' + (krlLockEnabled ? 'on' : 'off'));
+    });
+    outroToggle.addEventListener('click', () => {
+      outroEnabled = !outroEnabled;
+      syncOutroUi();
+      updateOutroMode(true);
+      persistUiState();
+      toast('goodbye message · ' + (outroEnabled ? 'armed' : 'off'));
+    });
+    outroTimeInput.addEventListener('input', () => {
+      outroTime = outroTimeInput.value || '01:30';
+      updateOutroMode(true);
+      persistUiState();
+      toast('goodbye time · ' + outroTime);
     });
     woodsWhiteToggle.addEventListener('click', () => {
       woodsWhiteMode = !woodsWhiteMode;
       woodsWhiteToggle.classList.toggle('active', woodsWhiteMode);
       woodsWhiteToggle.textContent = woodsWhiteMode ? 'On' : 'Off';
-      if(!showingText) renderWoodsLogo(true);
+      if(logoMode === 'woods') renderWoodsLogo(true);
       persistUiState();
       toast('woods white · ' + (woodsWhiteMode ? 'on' : 'off'));
     });
   }
+  syncOutroUi();
+  syncIntervalControl(sceneIntervalRange, sceneIntervalInput, sceneIntervalVal, SCENE_DWELL);
+  syncIntervalControl(palIntervalRange, palIntervalInput, palIntervalVal, PAL_DWELL);
+  syncIntervalControl(logoIntervalRange, logoIntervalInput, logoIntervalVal, Number(logoIntervalRange?.value || 10));
   if(paletteGrid){
     paletteGrid.addEventListener('click', (e) => {
       const toggleBtn = e.target.closest('[data-palette-check]');
@@ -2355,6 +2607,7 @@
     sceneB = idx;
     transitioning = true;
     transStart = clock;
+    transScale = TRANS_RES; applySize();   // drop res for the crossfade — kills the 2-scene tank
     persistUiState();
     toast('scene · ' + SCENE_NAMES[idx]);
     renderSceneMenu();
@@ -2387,6 +2640,7 @@
       blendEased = blend*blend*blend*(blend*(blend*6.0 - 15.0) + 10.0);  // smootherstep
       if(blend >= 1){
         sceneA = sceneB; blend = 0; blendEased = 0; transitioning = false;
+        transScale = 1.0; applySize();     // restore full res once the crossfade is done
         nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL;
         persistUiState();
         renderSceneMenu();
@@ -2401,22 +2655,22 @@
      ============================================================ */
   const LOOKS = [
     // soft flowing neon (the dreamy stuff Karl likes) — gentle, bloomy, no edge/posterize
-    { name:'FLOW',    scenes:[18,2,11,9,6,12,13,14,15,16,17,7], dwell:24, trans:3.4, palettes:[4,7,0,11,5],
+    { name:'FLOW',    scenes:[17,2,10,8,5,11,12,13,14,15,16,6], dwell:24, trans:3.4, palettes:[4,7,0,11,5],
       post:{ sharp:0.34, bloom:0.64, sat:1.34, contrast:1.05, black:0.00, bands:0, edge:0.00, ca:1.0, vig:1.00, strobe:0.00, grit:0.18, speed:0.60 } },
     // James Hype — sharp, punchy, fast cuts, light outline, mild strobe
-    { name:'KINETIC', scenes:[19,4,8,3,5,12],    dwell:12, trans:1.8, palettes:[0,4,1,13],
+    { name:'KINETIC', scenes:[18,7,3,4,11],    dwell:12, trans:1.8, palettes:[0,4,1,13],
       post:{ sharp:0.85, bloom:0.42, sat:1.16, contrast:1.22, black:0.06, bands:0, edge:0.55, ca:1.1, vig:1.05, strobe:0.22, grit:0.14, speed:0.94 } },
     // Mau P techno — dark, hypnotic, slow, posterized, crushed blacks, no grit
-    { name:'MINIMAL', scenes:[5,12,13,1,0],   dwell:32, trans:3.0, palettes:[12,4,7,13],
+    { name:'MINIMAL', scenes:[4,11,12,1,0],   dwell:32, trans:3.0, palettes:[12,4,7,13],
       post:{ sharp:0.60, bloom:0.30, sat:0.92, contrast:1.30, black:0.12, bands:5, edge:0.32, ca:0.6, vig:1.20, strobe:0.00, grit:0.00, speed:0.42 } },
     // Guetta festival — saturated, bloomy, energetic, strobe on peaks
-    { name:'RAVE',    scenes:[19,0,18,2,8,7,11,6],  dwell:16, trans:2.4, palettes:[1,8,0,10,6],
+    { name:'RAVE',    scenes:[18,0,17,2,7,6,10,5],  dwell:16, trans:2.4, palettes:[1,8,0,10,6],
       post:{ sharp:0.45, bloom:0.88, sat:1.50, contrast:1.10, black:0.02, bands:0, edge:0.00, ca:1.3, vig:0.90, strobe:0.32, grit:0.18, speed:0.82 } },
     // Skrillex — gritty, glitchy, heavy RGB split, posterize, scanlines
-    { name:'GRIT',    scenes:[4,9,12,13,5],   dwell:14, trans:1.6, palettes:[2,9,5,1],
+    { name:'GRIT',    scenes:[8,11,12,4],   dwell:14, trans:1.6, palettes:[2,9,5,1],
       post:{ sharp:0.70, bloom:0.40, sat:1.12, contrast:1.26, black:0.10, bands:6, edge:0.50, ca:2.4, vig:1.10, strobe:0.40, grit:0.85, speed:0.74 } },
     // graphic ink / line-art — maximum sharp, strong outline + posterize, low sat
-    { name:'INK',     scenes:[5,12,13,3,4,1], dwell:18, trans:2.2, palettes:[12,0,4],
+    { name:'INK',     scenes:[4,11,12,3,1], dwell:18, trans:2.2, palettes:[12,0,4],
       post:{ sharp:1.00, bloom:0.26, sat:0.55, contrast:1.42, black:0.14, bands:4, edge:1.00, ca:0.8, vig:1.15, strobe:0.14, grit:0.30, speed:0.58 } },
   ];
   const post   = { ...LOOKS[0].post };   // live (lerped) post params
@@ -2472,28 +2726,19 @@
       if(!sceneLoopEnabled.some(Boolean)) sceneLoopEnabled[2] = true;
     }
     if(typeof savedState.userSceneDwell === 'number' && Number.isFinite(savedState.userSceneDwell)){
-      userSceneDwell = savedState.userSceneDwell;
+      userSceneDwell = clampIntervalSeconds(savedState.userSceneDwell);
       SCENE_DWELL = userSceneDwell;
-      if(sceneIntervalRange){
-        sceneIntervalRange.value = String(Math.round(userSceneDwell));
-        sceneIntervalVal.textContent = Math.round(userSceneDwell) + 's';
-      }
+      syncIntervalControl(sceneIntervalRange, sceneIntervalInput, sceneIntervalVal, userSceneDwell);
     }else{
       syncSceneIntervalUI();
     }
     if(typeof savedState.palDwell === 'number' && Number.isFinite(savedState.palDwell)){
-      PAL_DWELL = savedState.palDwell;
-      if(palIntervalRange){
-        palIntervalRange.value = String(Math.round(PAL_DWELL));
-        palIntervalVal.textContent = Math.round(PAL_DWELL) + 's';
-      }
+      PAL_DWELL = clampIntervalSeconds(savedState.palDwell);
+      syncIntervalControl(palIntervalRange, palIntervalInput, palIntervalVal, PAL_DWELL);
     }
     if(typeof savedState.logoInterval === 'number' && Number.isFinite(savedState.logoInterval)){
-      LOGO_INTERVAL = savedState.logoInterval;
-      if(logoIntervalRange){
-        logoIntervalRange.value = String(Math.round(LOGO_INTERVAL / 1000));
-        logoIntervalVal.textContent = Math.round(LOGO_INTERVAL / 1000) + 's';
-      }
+      LOGO_INTERVAL = clampIntervalSeconds(savedState.logoInterval / 1000) * 1000;
+      syncIntervalControl(logoIntervalRange, logoIntervalInput, logoIntervalVal, LOGO_INTERVAL / 1000);
       clearInterval(logoTimer);
       logoTimer = setInterval(() => { if(logoAuto) flipLogo(); }, LOGO_INTERVAL);
     }
@@ -2505,6 +2750,10 @@
     krlGlitchEnabled = savedState.krlGlitchEnabled !== false;
     krlLockEnabled = !!savedState.krlLockEnabled;
     woodsWhiteMode = !!savedState.woodsWhiteMode;
+    outroEnabled = !!savedState.outroEnabled;
+    if(typeof savedState.outroTime === 'string' && /^\d{2}:\d{2}$/.test(savedState.outroTime)){
+      outroTime = savedState.outroTime;
+    }
     if(shuffleToggle){
       shuffleToggle.classList.toggle('active', shuffleMode);
       shuffleToggle.textContent = shuffleMode ? 'On' : 'Off';
@@ -2537,7 +2786,8 @@
     clearTimeout(glitchTimer);
     glitchTimer = null;
     if(krlGlitchEnabled) scheduleGlitch();
-    if(krlLockEnabled) setLogo(true);
+    syncOutroUi();
+    if(krlLockEnabled) setLogoMode('krl');
     if(woodsWhiteToggle){
       woodsWhiteToggle.classList.toggle('active', woodsWhiteMode);
       woodsWhiteToggle.textContent = woodsWhiteMode ? 'On' : 'Off';
@@ -2562,6 +2812,7 @@
     }
     nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL;
     nextPalAt = clock + PAL_DWELL;
+    updateOutroMode(true);
     renderSceneMenu();
     renderPaletteGrid();
     syncDropdownMeta();
@@ -2813,8 +3064,12 @@
   /* ============================================================
      LOGO control
      ============================================================ */
+  const logoGlowBg = document.getElementById('logoGlowBg');
   const logoInner = document.getElementById('logoInner');
   const logoTextLayer = document.getElementById('logoTextLayer');
+  const logoOutroLayer = document.getElementById('logoOutroLayer');
+  const outroPrimaryLine = document.getElementById('outroPrimaryLine');
+  const outroSecondaryLine = document.getElementById('outroSecondaryLine');
   const logoImgLayer  = document.getElementById('logoImgLayer');
   const logoImg   = document.getElementById('logoImg');
   const logoImgCanvas = document.getElementById('logoImgCanvas');
@@ -2828,7 +3083,9 @@
   const logoGlowCtx = logoGlowCanvas.getContext('2d', { alpha:true, desynchronized:true });
   const logoSceneCanvas = document.createElement('canvas');
   const logoSceneCtx = logoSceneCanvas.getContext('2d', { alpha:false, willReadFrequently:true });
-  let showingText = true;
+  let logoMode = 'krl';
+  let lastStandardLogoMode = 'krl';
+  let outroActive = false;
   let logoAuto = true;
   let LOGO_INTERVAL = 10000;   // ms between logo flips (user-adjustable)
   const LOGO_FADE_SEC = 1.1;
@@ -2843,11 +3100,135 @@
   let logoFreezeUntil = 0;   // pause glow-color/glitch updates while a logo fades in
   let cssLast = -1;          // throttle clock for all CSS-variable writes
   let logoGlowTimer = null;
+  let lastOutroCheckAt = -999;
   let logoFxLastAt = -999;
   let logoFxLastW = 0, logoFxLastH = 0;
   let logoMaskDirty = true;
   let logoSceneRgb = [255, 255, 255];
   let logoSceneLum = 0.5;
+  // cache the logo's layout rect so we don't force a layout reflow every frame.
+  // it only changes on resize (CSS-driven size), so re-measure lazily then.
+  let logoBounds = null;
+  let logoSampleLast = -999;
+  function logoBoundsCached(){
+    if(!logoBounds || !logoBounds.width) logoBounds = logoImg.getBoundingClientRect();
+    return logoBounds;
+  }
+  window.addEventListener('resize', () => { logoBounds = null; });
+  function applyOutroAccentStatic(){
+    const root = document.documentElement.style;
+    root.setProperty('--energy', '0');
+    root.setProperty('--accent', 'rgb(88,234,255)');
+    root.setProperty('--accentCore', 'rgb(255,255,255)');
+    root.setProperty('--accentSoft', 'rgba(88,234,255,0.14)');
+    root.setProperty('--accent2', 'rgb(255,255,255)');
+  }
+  const OUTRO_MESSAGES = [
+    { primary:'THANK YOU FOR COMING', secondary:'KRL-DJ.COM' },
+    { primary:'TIP YOUR BARTENDERS', secondary:'SHOW THE STAFF SOME LOVE' },
+    { primary:'VISIT ME ON INSTAGRAM', secondary:'@KARLKRUSEL' }
+  ];
+  const OUTRO_PRIMARY_CHAR_SEC = 0.088;
+  const OUTRO_SECONDARY_CHAR_SEC = 0.064;
+  const OUTRO_SECONDARY_DELAY = 0.18;
+  const OUTRO_HOLD_SEC = 10.0;
+  const OUTRO_SECONDARY_DELETE_CHAR_SEC = 0.040;
+  const OUTRO_PRIMARY_DELETE_CHAR_SEC = 0.050;
+  const OUTRO_DELETE_GAP_SEC = 0.18;
+  const OUTRO_NEXT_GAP_SEC = 0.28;
+  let outroMessageIndex = 0;
+  let outroMessageStartAt = 0;
+  let outroLastFrameActive = false;
+  let outroPrevPrimaryText = '';
+  let outroPrevSecondaryText = '';
+  let outroPrevPrimaryCaret = false;
+  let outroPrevSecondaryCaret = false;
+  function resetOutroTyping(startIndex = 0){
+    outroMessageIndex = ((startIndex % OUTRO_MESSAGES.length) + OUTRO_MESSAGES.length) % OUTRO_MESSAGES.length;
+    outroMessageStartAt = clock;
+    outroPrevPrimaryText = '';
+    outroPrevSecondaryText = '';
+    outroPrevPrimaryCaret = false;
+    outroPrevSecondaryCaret = false;
+    if(outroPrimaryLine){
+      outroPrimaryLine.textContent = '';
+      outroPrimaryLine.classList.add('caret');
+    }
+    if(outroSecondaryLine){
+      outroSecondaryLine.textContent = '';
+      outroSecondaryLine.classList.remove('caret');
+    }
+  }
+  function updateOutroTyping(){
+    if(!outroActive){
+      outroLastFrameActive = false;
+      return;
+    }
+    if(!outroLastFrameActive){
+      resetOutroTyping(outroMessageIndex);
+      outroLastFrameActive = true;
+    }
+    const msg = OUTRO_MESSAGES[outroMessageIndex];
+    const primaryTypeDur = msg.primary.length * OUTRO_PRIMARY_CHAR_SEC;
+    const secondaryTypeDur = msg.secondary.length * OUTRO_SECONDARY_CHAR_SEC;
+    const secondaryStartAt = primaryTypeDur + OUTRO_SECONDARY_DELAY;
+    const fullyShownAt = Math.max(primaryTypeDur, secondaryStartAt + secondaryTypeDur);
+    const secondaryDeleteStart = fullyShownAt + OUTRO_HOLD_SEC;
+    const secondaryDeleteDur = msg.secondary.length * OUTRO_SECONDARY_DELETE_CHAR_SEC;
+    const primaryDeleteStart = secondaryDeleteStart + secondaryDeleteDur + OUTRO_DELETE_GAP_SEC;
+    const primaryDeleteDur = msg.primary.length * OUTRO_PRIMARY_DELETE_CHAR_SEC;
+    const totalDur = primaryDeleteStart + primaryDeleteDur + OUTRO_NEXT_GAP_SEC;
+    let local = clock - outroMessageStartAt;
+    if(local >= totalDur){
+      outroMessageIndex = (outroMessageIndex + 1) % OUTRO_MESSAGES.length;
+      outroMessageStartAt = clock;
+      local = 0;
+    }
+    const secondaryLocal = local - secondaryStartAt;
+    let primaryText = '';
+    let secondaryText = '';
+    let primaryCaret = false;
+    let secondaryCaret = false;
+
+    if(local < primaryTypeDur){
+      const primaryCount = Math.max(0, Math.min(msg.primary.length, Math.floor(local / OUTRO_PRIMARY_CHAR_SEC)));
+      primaryText = msg.primary.slice(0, primaryCount);
+      primaryCaret = true;
+    }else if(local < primaryDeleteStart){
+      primaryText = msg.primary;
+    }else{
+      const deleteCount = Math.max(0, Math.min(msg.primary.length, Math.floor((local - primaryDeleteStart) / OUTRO_PRIMARY_DELETE_CHAR_SEC)));
+      const remain = Math.max(0, msg.primary.length - deleteCount);
+      primaryText = msg.primary.slice(0, remain);
+      primaryCaret = remain > 0;
+    }
+
+    if(secondaryLocal >= 0){
+      if(local < secondaryDeleteStart){
+        const secondaryCount = Math.max(0, Math.min(msg.secondary.length, Math.floor(secondaryLocal / OUTRO_SECONDARY_CHAR_SEC)));
+        secondaryText = msg.secondary.slice(0, secondaryCount);
+        secondaryCaret = local >= primaryTypeDur && secondaryCount < msg.secondary.length;
+      }else{
+        const deleteCount = Math.max(0, Math.min(msg.secondary.length, Math.floor((local - secondaryDeleteStart) / OUTRO_SECONDARY_DELETE_CHAR_SEC)));
+        const remain = Math.max(0, msg.secondary.length - deleteCount);
+        secondaryText = msg.secondary.slice(0, remain);
+        secondaryCaret = remain > 0 && local < primaryDeleteStart;
+      }
+    }
+
+    if(outroPrimaryLine && (primaryText !== outroPrevPrimaryText || primaryCaret !== outroPrevPrimaryCaret)){
+      outroPrimaryLine.textContent = primaryText;
+      outroPrimaryLine.classList.toggle('caret', primaryCaret);
+    }
+    if(outroSecondaryLine && (secondaryText !== outroPrevSecondaryText || secondaryCaret !== outroPrevSecondaryCaret)){
+      outroSecondaryLine.textContent = secondaryText;
+      outroSecondaryLine.classList.toggle('caret', secondaryCaret);
+    }
+    outroPrevPrimaryText = primaryText;
+    outroPrevSecondaryText = secondaryText;
+    outroPrevPrimaryCaret = primaryCaret;
+    outroPrevSecondaryCaret = secondaryCaret;
+  }
   function logoPaletteNow(){
     const to255 = v => Math.max(0, Math.min(255, Math.round(v * 255)));
     const pt = paletteTweenProgress();
@@ -2864,7 +3245,7 @@
   }
 
   function updateLogoCanvasSize(force = false){
-    const bounds = logoImg.getBoundingClientRect();
+    const bounds = logoBoundsCached();
     const cssW = Math.round(bounds.width || logoImg.clientWidth || Math.min(window.innerWidth * 0.66, LOGO_FX_MAX_W));
     if(!cssW) return false;
     const dpr = Math.min(window.devicePixelRatio || 1, LOGO_FX_MAX_DPR);
@@ -2913,7 +3294,9 @@
 
   function sampleSceneUnderLogo(){
     if(!logoSceneCtx || !cvs.width || !cvs.height) return;
-    const bounds = logoImg.getBoundingClientRect();
+    if(clock - logoSampleLast < 0.12) return;   // ~8fps — the scene behind the logo changes slowly
+    logoSampleLast = clock;
+    const bounds = logoBoundsCached();
     const vw = Math.max(1, window.innerWidth);
     const vh = Math.max(1, window.innerHeight);
     const sx = Math.max(0, Math.floor((bounds.left / vw) * cvs.width));
@@ -2945,7 +3328,7 @@
   }
 
   function renderWoodsLogo(force = false){
-    if(showingText || !logoImgBase.complete || !logoImgBase.naturalWidth || !logoImgCtx || !logoFxCtx) return;
+    if(logoMode !== 'woods' || !logoImgBase.complete || !logoImgBase.naturalWidth || !logoImgCtx || !logoFxCtx) return;
     const sizeChanged = updateLogoCanvasSize(force);
     const paletteMix = paletteTweenProgress();
     const paletteTweening = paletteMix < 0.999;
@@ -3133,32 +3516,58 @@
     }
   }
 
-  function setLogo(text){
-    showingText = text;
+  function setLogoMode(mode){
+    logoMode = mode;
+    if(mode !== 'outro') lastStandardLogoMode = mode;
+    if(mode === 'outro') resetOutroTyping(outroMessageIndex);
+    logoInner.classList.toggle('outroMode', mode === 'outro');
+    if(logoGlowBg) logoGlowBg.classList.toggle('padHidden', mode === 'outro');
+    if(mode === 'outro') applyOutroAccentStatic();
     logoFreezeUntil = clock + LOGO_GLOW_FREEZE_SEC;   // hold the glow only through the riskiest part of the fade
     clearTimeout(logoGlowTimer);
-    if(text){
+    if(mode !== 'woods'){
       logoImg.classList.remove('glowSettling');
     }else{
       logoImg.classList.add('glowSettling');
       logoGlowTimer = setTimeout(() => logoImg.classList.remove('glowSettling'), LOGO_GLOW_SWAP_SEC * 1000);
     }
-    logoTextLayer.className = 'layer ' + (text ? 'shown' : 'hidden');
-    logoImgLayer.className  = 'layer ' + (text ? 'hidden' : 'shown');
-    if(!text){
+    logoTextLayer.className = 'layer ' + (mode === 'krl' ? 'shown' : 'hidden');
+    logoOutroLayer.className = 'layer ' + (mode === 'outro' ? 'shown' : 'hidden');
+    logoImgLayer.className  = 'layer ' + (mode === 'woods' ? 'shown' : 'hidden');
+    if(mode === 'woods'){
       renderWoodsLogo(true);
     }
   }
-  function flipLogo(){
-    if(krlLockEnabled){
-      if(!showingText) setLogo(true);
+  function setLogo(text){
+    setLogoMode(text ? 'krl' : 'woods');
+  }
+  function updateOutroMode(force = false){
+    const shouldShow = computeOutroShouldShow();
+    if(!force && shouldShow === outroActive) return;
+    outroActive = shouldShow;
+    if(outroActive){
+      setLogoMode('outro');
       return;
     }
-    setLogo(!showingText);
+    if(logoMode === 'outro'){
+      setLogoMode(krlLockEnabled ? 'krl' : lastStandardLogoMode);
+    }
+  }
+  function flipLogo(){
+    if(outroActive) return;
+    if(krlLockEnabled){
+      if(logoMode !== 'krl') setLogoMode('krl');
+      return;
+    }
+    setLogoMode(logoMode === 'woods' ? 'krl' : 'woods');
   }
 
   // preload the Tourner font so the KRL text paints in the right face from the start
   if(document.fonts && document.fonts.load) document.fonts.load('64px "Tourner"').catch(()=>{});
+  if(document.fonts && document.fonts.load){
+    document.fonts.load('64px "Syne"').catch(()=>{});
+    document.fonts.load('24px "Space Mono"').catch(()=>{});
+  }
 
   // load user PNG; if absent, generate a placeholder emblem so the flip still demos
   function placeholderLogo(){
@@ -3190,7 +3599,7 @@
 
   function glitch(force = false){
     if(!krlGlitchEnabled) return;
-    if(!showingText) return;                 // never glitch the Woods PNG logo
+    if(logoMode !== 'krl') return;          // never glitch Woods or the outro card
     if(!force && clock < logoFreezeUntil) return;
     logoInner.classList.remove('glitch');
     void logoInner.offsetWidth; // reflow to restart animation
@@ -3198,7 +3607,7 @@
     setTimeout(() => logoInner.classList.remove('glitch'), 280);
   }
 
-  let logoTimer = setInterval(() => { if(logoAuto && !krlLockEnabled) flipLogo(); }, LOGO_INTERVAL);
+  let logoTimer = setInterval(() => { if(logoAuto) flipLogo(); }, LOGO_INTERVAL);
   let glitchTimer = null;
   function scheduleGlitch(){
     if(!krlGlitchEnabled) return;
@@ -3325,6 +3734,12 @@
     const pk = Math.min(1, dt*4.0);
     for(const k in postTo){ post[k] += (postTo[k] - post[k]) * pk; }
 
+    if(clock - lastOutroCheckAt > 0.5){
+      lastOutroCheckAt = clock;
+      updateOutroMode();
+    }
+    updateOutroTyping();
+
     // scheduling
     if(autoScene && !transitioning && clock >= nextSceneAt) autoNextScene();
     updateScene();
@@ -3347,13 +3762,18 @@
 
     // Keep logo motion smooth by updating the scale every frame. Only the more
     // expensive accent/glow colour writes stay throttled.
-    const logoPulseTarget = micReactive
-      ? Math.max(micKick * 1.18, Math.max(0, micVisual - 0.16) * 0.92)
-      : Math.max(0, E - 0.42) * 0.20;
-    logoPulseSmooth += (logoPulseTarget - logoPulseSmooth) * (logoPulseTarget > logoPulseSmooth ? 0.26 : 0.11);
-    const logoScale = micReactive
-      ? 1 + E*0.030 + logoPulseSmooth*0.145
-      : 1 + E*0.072;
+    let logoScale = 1.0;
+    if(outroActive){
+      logoPulseSmooth = 0.0;
+    }else{
+      const logoPulseTarget = micReactive
+        ? Math.max(micKick * 1.18, Math.max(0, micVisual - 0.16) * 0.92)
+        : Math.max(0, E - 0.42) * 0.20;
+      logoPulseSmooth += (logoPulseTarget - logoPulseSmooth) * (logoPulseTarget > logoPulseSmooth ? 0.26 : 0.11);
+      logoScale = micReactive
+        ? 1 + E*0.030 + logoPulseSmooth*0.145
+        : 1 + E*0.072;
+    }
     logoInner.style.scale = logoScale.toFixed(4);
 
     // drive logo CSS. Accent colors feed the glow shadows/filters, so writing them
@@ -3363,8 +3783,12 @@
     if(clock - cssLast > 0.075){
       cssLast = clock;
       const root = document.documentElement.style;
-      root.setProperty('--energy', E.toFixed(3));
-      if(clock > logoFreezeUntil){   // hold the glow colour steady through a logo fade (anti-flicker)
+      if(outroActive){
+        applyOutroAccentStatic();
+      }else{
+        root.setProperty('--energy', E.toFixed(3));
+      }
+      if(!outroActive && clock > logoFreezeUntil){   // hold the glow colour steady through a logo fade (anti-flicker)
         const acc = cur.c3, acc2 = cur.c2;   // glow tints from the colorway's bright stops
         const to255 = v => Math.max(0, Math.min(255, Math.round(v*255)));
         const accRgb = `${to255(acc[0])},${to255(acc[1])},${to255(acc[2])}`;
@@ -3380,7 +3804,7 @@
       }
     }
 
-    if(!showingText) renderWoodsLogo();
+    if(logoMode === 'woods') renderWoodsLogo();
 
     // ---- PASS 1: scene -> sceneT ----
     gl.useProgram(sceneProg);
