@@ -2636,7 +2636,7 @@
   syncOutroUi();
   syncIntervalControl(sceneIntervalRange, sceneIntervalInput, sceneIntervalVal, SCENE_DWELL);
   syncIntervalControl(palIntervalRange, palIntervalInput, palIntervalVal, PAL_DWELL);
-  syncIntervalControl(logoIntervalRange, logoIntervalInput, logoIntervalVal, Number(logoIntervalRange?.value || 10));
+  syncIntervalControl(logoIntervalRange, logoIntervalInput, logoIntervalVal, Number((logoIntervalRange && logoIntervalRange.value) || 10));
   if(paletteGrid){
     paletteGrid.addEventListener('click', (e) => {
       const toggleBtn = e.target.closest('[data-palette-check]');
