@@ -424,7 +424,7 @@
   }
   .settingTime{
     justify-self:end;
-    width:132px;
+    width:176px;
     border:1px solid rgba(255,255,255,0.16);
     border-radius:6px;
     background:rgba(255,255,255,0.08);
@@ -440,6 +440,19 @@
     filter:invert(1);
     opacity:0.8;
     cursor:pointer;
+  }
+  .settingSelect{
+    justify-self:end;
+    width:176px;
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:6px;
+    background:rgba(255,255,255,0.08);
+    color:#fff;
+    padding:7px 9px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.04em;
   }
   #lookSection{ margin-bottom:13px; }
   #lookSectionLabel{
@@ -896,9 +909,14 @@
         <button class="settingToggle" id="outroToggle" type="button">Off</button>
       </div>
       <div class="settingRow">
-        <label class="settingName" for="outroTimeInput">Goodbye at</label>
+        <label class="settingName" for="outroDateSelect">Goodbye date</label>
         <span></span>
-        <input id="outroTimeInput" class="settingTime" type="time" step="60" value="01:30" />
+        <select id="outroDateSelect" class="settingSelect"></select>
+      </div>
+      <div class="settingRow">
+        <label class="settingName" for="outroTimeInput">Goodbye time</label>
+        <span></span>
+        <input id="outroTimeInput" class="settingTime" type="time" step="60" />
       </div>
       <div class="settingRow">
         <span class="settingName">Woods white glow</span>
@@ -2129,7 +2147,7 @@
       krlLockEnabled,
       woodsWhiteMode,
       outroEnabled,
-      outroTime
+      outroDateTime
     });
   }
 
@@ -2331,6 +2349,7 @@
   const krlGlitchToggle    = document.getElementById('krlGlitchToggle');
   const krlLockToggle      = document.getElementById('krlLockToggle');
   const outroToggle        = document.getElementById('outroToggle');
+  const outroDateSelect    = document.getElementById('outroDateSelect');
   const outroTimeInput     = document.getElementById('outroTimeInput');
   const woodsWhiteToggle   = document.getElementById('woodsWhiteToggle');
   let velocityTransitionEnabled = false;
@@ -2339,31 +2358,85 @@
   let krlLockEnabled = false;
   let woodsWhiteMode = false;
   let outroEnabled = false;
-  let outroTime = '01:30';
+  let outroDateTime = '';
   const MIN_INTERVAL_SEC = 3;
   const MAX_INTERVAL_SEC = 10800;
-  function parseClockMinutes(value){
-    if(typeof value !== 'string') return null;
-    const match = value.match(/^(\d{2}):(\d{2})$/);
-    if(!match) return null;
-    const hours = Number(match[1]);
-    const minutes = Number(match[2]);
-    if(hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-    return hours * 60 + minutes;
+  function pad2(n){
+    return String(n).padStart(2,'0');
+  }
+  function toDateTimeLocalValue(date){
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  }
+  function toDateValue(date){
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+  }
+  function toTimeValue(date){
+    return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  }
+  function defaultOutroDateTime(){
+    const d = new Date();
+    d.setMinutes(d.getMinutes() + 60, 0, 0);
+    return toDateTimeLocalValue(d);
+  }
+  function parseOutroDateTime(value){
+    if(typeof value !== 'string' || !value) return null;
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
   function computeOutroShouldShow(date = new Date()){
     if(!outroEnabled) return false;
-    const triggerMinutes = parseClockMinutes(outroTime);
-    if(triggerMinutes == null) return false;
-    return (date.getHours() * 60 + date.getMinutes()) >= triggerMinutes;
+    const triggerDate = parseOutroDateTime(outroDateTime);
+    if(!triggerDate) return false;
+    return date.getTime() >= triggerDate.getTime();
+  }
+  function buildOutroDateOptions(){
+    const options = [];
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    for(let i = 0; i < 14; i++){
+      const d = new Date(today.getTime() + i * 86400000);
+      const value = toDateValue(d);
+      const label = i === 0 ? `Today · ${value}` : i === 1 ? `Tomorrow · ${value}` : `${d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' })} · ${value}`;
+      options.push({ value, label });
+    }
+    return options;
+  }
+  function syncOutroDateOptions(selectedValue){
+    if(!outroDateSelect) return;
+    const options = buildOutroDateOptions();
+    if(selectedValue && !options.some(opt => opt.value === selectedValue)){
+      options.push({ value:selectedValue, label:`Selected · ${selectedValue}` });
+    }
+    outroDateSelect.innerHTML = '';
+    options.forEach(opt => {
+      const el = document.createElement('option');
+      el.value = opt.value;
+      el.textContent = opt.label;
+      outroDateSelect.appendChild(el);
+    });
+  }
+  function updateOutroDateTimeParts(dateValue, timeValue){
+    const safeDate = dateValue || toDateValue(new Date());
+    const safeTime = timeValue || '01:30';
+    outroDateTime = `${safeDate}T${safeTime}`;
   }
   function syncOutroUi(){
     if(outroToggle){
       outroToggle.classList.toggle('active', outroEnabled);
       outroToggle.textContent = outroEnabled ? 'On' : 'Off';
     }
+    const parsed = parseOutroDateTime(outroDateTime || defaultOutroDateTime()) || new Date();
+    const dateValue = toDateValue(parsed);
+    const timeValue = toTimeValue(parsed);
+    if(!outroDateTime) outroDateTime = toDateTimeLocalValue(parsed);
+    if(outroDateSelect){
+      syncOutroDateOptions(dateValue);
+      outroDateSelect.value = dateValue;
+      outroDateSelect.disabled = !outroEnabled;
+      outroDateSelect.style.opacity = outroEnabled ? '1' : '0.45';
+    }
     if(outroTimeInput){
-      outroTimeInput.value = outroTime;
+      outroTimeInput.value = timeValue;
       outroTimeInput.disabled = !outroEnabled;
       outroTimeInput.style.opacity = outroEnabled ? '1' : '0.45';
     }
@@ -2539,11 +2612,17 @@
       persistUiState();
       toast('goodbye message · ' + (outroEnabled ? 'armed' : 'off'));
     });
-    outroTimeInput.addEventListener('input', () => {
-      outroTime = outroTimeInput.value || '01:30';
+    outroDateSelect.addEventListener('input', () => {
+      updateOutroDateTimeParts(outroDateSelect.value, outroTimeInput.value);
       updateOutroMode(true);
       persistUiState();
-      toast('goodbye time · ' + outroTime);
+      toast('goodbye date · set');
+    });
+    outroTimeInput.addEventListener('input', () => {
+      updateOutroDateTimeParts(outroDateSelect.value, outroTimeInput.value);
+      updateOutroMode(true);
+      persistUiState();
+      toast('goodbye time · set');
     });
     woodsWhiteToggle.addEventListener('click', () => {
       woodsWhiteMode = !woodsWhiteMode;
@@ -2751,8 +2830,11 @@
     krlLockEnabled = !!savedState.krlLockEnabled;
     woodsWhiteMode = !!savedState.woodsWhiteMode;
     outroEnabled = !!savedState.outroEnabled;
-    if(typeof savedState.outroTime === 'string' && /^\d{2}:\d{2}$/.test(savedState.outroTime)){
-      outroTime = savedState.outroTime;
+    if(typeof savedState.outroDateTime === 'string' && parseOutroDateTime(savedState.outroDateTime)){
+      outroDateTime = savedState.outroDateTime;
+    }else if(typeof savedState.outroTime === 'string' && /^\d{2}:\d{2}$/.test(savedState.outroTime)){
+      const migrated = defaultOutroDateTime();
+      outroDateTime = migrated.slice(0, 11) + savedState.outroTime;
     }
     if(shuffleToggle){
       shuffleToggle.classList.toggle('active', shuffleMode);
