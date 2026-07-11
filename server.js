@@ -20,6 +20,8 @@ const os   = require('os');
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8123;
 const ROOT = __dirname;
+const LOG_DIR = path.join(ROOT, 'logs');
+const BOOT_LOG_FILE = path.join(LOG_DIR, 'krl-vfx-browser.log');
 
 const MIME = {
   '.html':'text/html; charset=utf-8',
@@ -49,9 +51,50 @@ function broadcast(payload){
   }
 }
 
+function appendBootLog(req, payload){
+  fs.mkdirSync(LOG_DIR, { recursive:true });
+  const ip = (req.socket && req.socket.remoteAddress) || 'unknown';
+  const record = {
+    serverTime: new Date().toISOString(),
+    ip,
+    payload
+  };
+  fs.appendFileSync(BOOT_LOG_FILE, JSON.stringify(record) + '\n', 'utf8');
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
   const pathname = decodeURIComponent(url.pathname);
+
+  /* ---- browser boot/crash diagnostics ---- */
+  if(pathname === '/boot-log'){
+    if(req.method === 'OPTIONS'){
+      res.writeHead(204, {
+        'Access-Control-Allow-Origin':'*',
+        'Access-Control-Allow-Methods':'POST, OPTIONS',
+        'Access-Control-Allow-Headers':'Content-Type'
+      });
+      res.end();
+      return;
+    }
+    if(req.method === 'POST'){
+      let body = '';
+      req.on('data', c => { body += c; if(body.length > 512 * 1024) req.destroy(); });
+      req.on('end', () => {
+        try {
+          appendBootLog(req, JSON.parse(body));
+          res.writeHead(204, {'Access-Control-Allow-Origin':'*'});
+        } catch(err){
+          res.writeHead(400, {'Content-Type':'text/plain; charset=utf-8', 'Access-Control-Allow-Origin':'*'});
+          res.end('bad log payload');
+          return;
+        }
+        res.end();
+      });
+      return;
+    }
+    res.writeHead(405); res.end(); return;
+  }
 
   /* ---- control message bus (Server-Sent Events) ---- */
   if(pathname === '/bus'){
@@ -111,6 +154,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log('\n  KRL // VFX  —  local server running');
   console.log('  -----------------------------------');
   console.log(`  Visuals (this computer):  http://127.0.0.1:${PORT}/index.html`);
+  console.log(`  Browser crash log:        ${BOOT_LOG_FILE}`);
   if(ips.length){
     console.log('\n  Phone remote (same Wi-Fi) — open on your phone:');
     for(const ip of ips) console.log(`     http://${ip}:${PORT}/remote.html`);

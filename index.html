@@ -1144,7 +1144,101 @@
 (function(){
   const cvs = document.getElementById('gl');
   const fatal = document.getElementById('fatal');
+  const BOOT_LOG_KEY = 'krlVfxBootLog';
+  const bootLogSession = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  const bootLogEntries = [];
+  let bootFboStartPosts = 0;
+  const bootLogCanPost = /^https?:$/.test(location.protocol)
+    && /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(location.hostname);
+  function bootLogSafeDetails(details){
+    if(!details) return {};
+    try { return JSON.parse(JSON.stringify(details)); }
+    catch(_){ return { value:String(details) }; }
+  }
+  function bootLogPayload(){
+    return {
+      session:bootLogSession,
+      url:location.href,
+      userAgent:navigator.userAgent,
+      platform:navigator.platform || '',
+      language:navigator.language || '',
+      screen:{
+        width:window.screen ? window.screen.width : null,
+        height:window.screen ? window.screen.height : null,
+        dpr:window.devicePixelRatio || 1
+      },
+      entries:bootLogEntries
+    };
+  }
+  function bootLogText(){
+    const payload = bootLogPayload();
+    const lines = [
+      'KRL VFX BOOT LOG',
+      `session: ${payload.session}`,
+      `url: ${payload.url}`,
+      `userAgent: ${payload.userAgent}`,
+      `platform: ${payload.platform}`,
+      `screen: ${payload.screen.width}x${payload.screen.height} @ ${payload.screen.dpr}x`,
+      ''
+    ];
+    for(const entry of bootLogEntries){
+      lines.push(`[${entry.t}ms] ${entry.name} ${JSON.stringify(entry.details || {})}`);
+    }
+    return lines.join('\n');
+  }
+  function saveBootLogLocal(){
+    try { localStorage.setItem(BOOT_LOG_KEY, JSON.stringify(bootLogPayload())); } catch(_){}
+  }
+  function postBootLog(){
+    if(!bootLogCanPost) return;
+    try {
+      const body = JSON.stringify(bootLogPayload());
+      if(navigator.sendBeacon){
+        const blob = new Blob([body], { type:'application/json' });
+        navigator.sendBeacon('/boot-log', blob);
+      }else{
+        fetch('/boot-log', { method:'POST', headers:{'Content-Type':'application/json'}, body }).catch(()=>{});
+      }
+    } catch(_){}
+  }
+  function bootMark(name, details){
+    const entry = {
+      t:Math.round(performance.now()),
+      name,
+      details:bootLogSafeDetails(details)
+    };
+    bootLogEntries.push(entry);
+    if(bootLogEntries.length > 260) bootLogEntries.shift();
+    saveBootLogLocal();
+    const shouldPostFboStart = entry.name === 'framebuffer-alloc-start' && bootFboStartPosts++ < 6;
+    if(entry.name.indexOf('error') >= 0
+      || entry.name.indexOf('failed') >= 0
+      || entry.name === 'webgl-context-created'
+      || entry.name === 'shader-compile-start'
+      || entry.name === 'program-link-start'
+      || shouldPostFboStart
+      || entry.name === 'first-frame'
+      || entry.name === 'programs-linked'){
+      postBootLog();
+    }
+  }
+  function downloadBootLogTxt(){
+    const blob = new Blob([bootLogText()], { type:'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    a.href = url;
+    a.download = `krl-vfx-boot-${stamp}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  window.__krlBootLogText = bootLogText;
+  window.__krlDownloadBootLog = downloadBootLogTxt;
+  bootMark('script-start');
   const GL_CONTEXT_OPTS = { antialias:false, alpha:false, depth:false, stencil:false, powerPreference:'high-performance' };
+  bootMark('webgl-context-request', GL_CONTEXT_OPTS);
   const gl = cvs.getContext('webgl2', GL_CONTEXT_OPTS)
     || cvs.getContext('webgl', GL_CONTEXT_OPTS)
     || cvs.getContext('experimental-webgl', GL_CONTEXT_OPTS);
@@ -1155,21 +1249,35 @@
   const ASSET_VERSION = '20260711-assets2';
   const WOODS_LOGO_URL = `logo.png?v=${ASSET_VERSION}`;
   function showFatal(message){
+    bootMark('fatal', { message });
     fatal.textContent = message;
     fatal.style.display = 'grid';
   }
   window.addEventListener('error', (e) => {
-    if(e && e.message) showFatal('Visual engine error: ' + e.message);
+    if(e && e.message){
+      bootMark('window-error', { message:e.message, filename:e.filename, lineno:e.lineno, colno:e.colno });
+      showFatal('Visual engine error: ' + e.message);
+    }
   });
   window.addEventListener('unhandledrejection', (e) => {
     const reason = e && e.reason;
     const message = reason && reason.message ? reason.message : String(reason || 'unknown error');
+    bootMark('unhandled-rejection', { message });
     showFatal('Visual engine error: ' + message);
   });
   if(!gl){
     showFatal('This browser did not start WebGL. Turn on hardware acceleration or try Edge/Chrome/Firefox with WebGL enabled.');
     return;
   }
+  bootMark('webgl-context-created', {
+    webgl2:isWebGL2,
+    renderer:gl.getParameter(gl.RENDERER),
+    vendor:gl.getParameter(gl.VENDOR),
+    version:gl.getParameter(gl.VERSION),
+    shadingLanguage:gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
+    maxTextureSize:gl.getParameter(gl.MAX_TEXTURE_SIZE),
+    maxFragmentUniformVectors:gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS)
+  });
   gl.clearColor(0, 0, 0, 1);
   gl.disable(gl.DEPTH_TEST);
   gl.disable(gl.STENCIL_TEST);
@@ -2401,13 +2509,18 @@
      GL HELPERS
      ============================================================ */
   function sh(type, src){
+    const shaderName = type === gl.VERTEX_SHADER ? 'vertex' : 'fragment';
+    bootMark('shader-compile-start', { shader:shaderName, chars:src.length, lite:forceLiteEngine, webgl2:isWebGL2 });
     const s = gl.createShader(type);
     gl.shaderSource(s, src);
     gl.compileShader(s);
     if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
-      console.error('Shader error:', gl.getShaderInfoLog(s), '\n', src);
-      throw new Error(gl.getShaderInfoLog(s));
+      const info = gl.getShaderInfoLog(s);
+      bootMark('shader-compile-failed', { shader:shaderName, info, chars:src.length });
+      console.error('Shader error:', info, '\n', src);
+      throw new Error(info);
     }
+    bootMark('shader-compile-ok', { shader:shaderName, chars:src.length });
     return s;
   }
   function fragCompat(src, outName){
@@ -2420,14 +2533,18 @@
       .replace(new RegExp(`\\b${outName}\\b`, 'g'), 'gl_FragColor');
   }
   function prog(fragSrc, outName){
+    bootMark('program-link-start', { outName, fragChars:fragSrc.length, lite:forceLiteEngine });
     const p = gl.createProgram();
     gl.attachShader(p, sh(gl.VERTEX_SHADER, VERT));
     gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fragCompat(fragSrc, outName)));
     gl.linkProgram(p);
     if(!gl.getProgramParameter(p, gl.LINK_STATUS)){
-      console.error('Link error:', gl.getProgramInfoLog(p));
-      throw new Error(gl.getProgramInfoLog(p));
+      const info = gl.getProgramInfoLog(p);
+      bootMark('program-link-failed', { outName, info });
+      console.error('Link error:', info);
+      throw new Error(info);
     }
+    bootMark('program-link-ok', { outName });
     // cache uniform locations lazily
     p._u = {};
     p.u = function(name){
@@ -2443,6 +2560,7 @@
     brightProg = prog(BRIGHT_FRAG, 'o');
     blurProg   = prog(BLUR_FRAG, 'o');
     compProg   = prog(COMP_FRAG, 'fragColor');
+    bootMark('programs-linked', { lite:forceLiteEngine });
   }catch(e){
     showFatal('Visual engine failed to start: ' + e.message);
     return;
@@ -2459,6 +2577,7 @@
   }
 
   function makeTarget(w, h){
+    bootMark('framebuffer-alloc-start', { w, h });
     const tex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -2471,8 +2590,10 @@
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
     const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
     if(status !== gl.FRAMEBUFFER_COMPLETE){
+      bootMark('framebuffer-alloc-failed', { w, h, status:'0x' + status.toString(16) });
       throw new Error('Framebuffer setup failed on this GPU/browser: 0x' + status.toString(16));
     }
+    bootMark('framebuffer-alloc-ok', { w, h });
     return { tex, fbo, w, h };
   }
 
@@ -4550,7 +4671,7 @@
     return lines.join('\n');
   }
   function downloadPerfLogTxt(){
-    const text = perfLogsToText();
+    const text = `${bootLogText()}\n\n\n${perfLogsToText()}`;
     const blob = new Blob([text], { type:'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -4667,6 +4788,7 @@
   renderPerfHud();
   window.__krlPerfHistory = perfHistory;
   window.__krlPerfLogText = perfLogsToText;
+  window.__krlDiagLogText = () => `${bootLogText()}\n\n\n${perfLogsToText()}`;
   if(perfExportBtn){
     perfExportBtn.addEventListener('click', () => {
       downloadPerfLogTxt();
@@ -4719,7 +4841,11 @@
         break;
       case 'j':
         downloadPerfLogTxt();
-        toast('perf log · txt saved');
+        toast('diag log · txt saved');
+        break;
+      case 'b':
+        downloadBootLogTxt();
+        toast('boot log · txt saved');
         break;
       case 'a':
         autoScene = !autoScene; autoPalette = autoScene; logoAuto = autoScene;
@@ -5140,12 +5266,14 @@
   restoreUiState();
 
   let renderStopped = false;
+  let firstFrameLogged = false;
   function render(now){
     if(renderStopped) return;
     try{
       renderFrame(now);
     }catch(e){
       renderStopped = true;
+      bootMark('render-error', { message:e && e.message ? e.message : String(e) });
       try{
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         gl.viewport(0, 0, cvs.width || 2, cvs.height || 2);
@@ -5508,6 +5636,10 @@
       perfSample.compositePass = performance.now() - phaseStart;
       perfSample.total = performance.now() - perfFrameStart;
       recordPerfFrame(perfSample);
+    }
+    if(!firstFrameLogged){
+      firstFrameLogged = true;
+      bootMark('first-frame', { rw:RW, rh:RH, renderScale:Number(renderScale.toFixed(3)), lite:forceLiteEngine });
     }
 
     requestAnimationFrame(render);
