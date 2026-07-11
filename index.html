@@ -1278,6 +1278,10 @@
     maxTextureSize:gl.getParameter(gl.MAX_TEXTURE_SIZE),
     maxFragmentUniformVectors:gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS)
   });
+  if(!isWebGL2 && !forceLiteEngine){
+    showFatal('Full visuals need WebGL2. This Chrome session only started WebGL1, which crashes on the full shader. Turn on Chrome hardware acceleration / update GPU drivers, then reopen this page. Temporary fallback: add ?lite=1 to the URL.');
+    return;
+  }
   gl.clearColor(0, 0, 0, 1);
   gl.disable(gl.DEPTH_TEST);
   gl.disable(gl.STENCIL_TEST);
