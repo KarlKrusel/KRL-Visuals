@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#05060a">
+<title>KRL // VFX — Remote</title>
+<style>
+  :root{
+    --bg:#05060a; --panel:#0e1018; --panel2:#151826; --line:#232838;
+    --ink:#eaf0ff; --dim:#8a93ad; --accent:#26e0ff; --accent2:#b46bff;
+    --on:#1a3a2a; --onLine:#2fd07a; --hot:#ff3b6b;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  body{ padding:14px 14px calc(28px + env(safe-area-inset-bottom)); max-width:560px; margin:0 auto;
+    touch-action:manipulation; }
+  h1{ font-size:15px; letter-spacing:.28em; font-weight:700; margin:2px 0 12px;
+    display:flex; align-items:center; gap:10px; color:var(--dim); }
+  h1 .brand{ color:var(--ink); }
+  .dot{ width:10px; height:10px; border-radius:50%; background:var(--hot);
+    box-shadow:0 0 10px currentColor; transition:background .2s; }
+  .dot.live{ background:var(--onLine); }
+
+  /* status card */
+  .status{ background:linear-gradient(160deg,var(--panel),var(--panel2));
+    border:1px solid var(--line); border-radius:16px; padding:14px 16px; margin-bottom:16px; }
+  .status .big{ font-size:24px; font-weight:700; letter-spacing:.01em; }
+  .status .sub{ color:var(--dim); font-size:13px; margin-top:2px; }
+  .metaRow{ display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:12px;
+    font-size:12px; color:var(--dim); }
+  .metaRow b{ color:var(--ink); font-weight:600; }
+
+  .group{ margin-bottom:18px; }
+  .label{ font-size:11px; letter-spacing:.22em; text-transform:uppercase;
+    color:var(--dim); margin:0 2px 8px; }
+
+  button, select{ font-family:inherit; color:var(--ink); }
+  .grid{ display:grid; gap:10px; }
+  .g2{ grid-template-columns:1fr 1fr; }
+  .g3{ grid-template-columns:1fr 1fr 1fr; }
+
+  .btn{ appearance:none; border:1px solid var(--line); background:var(--panel);
+    border-radius:14px; min-height:62px; font-size:16px; font-weight:600;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:10px 12px; cursor:pointer; transition:transform .06s, background .15s, border-color .15s; }
+  .btn:active{ transform:scale(.96); background:var(--panel2); }
+  .btn.wide{ width:100%; }
+  .btn.accent{ border-color:#1c4a55; }
+  .btn small{ display:block; font-size:11px; color:var(--dim); font-weight:500; letter-spacing:.04em; }
+  .btn.on{ background:var(--on); border-color:var(--onLine); color:#d9ffe9; }
+  .btn.on small{ color:#8ff0c0; }
+  /* effect buttons get their own active colours: white strobe = white, drop = amber */
+  .btn.fx.on{ background:#eef2ff; border-color:#fff; color:#0a0c12; box-shadow:0 0 18px #ffffff66; }
+  .btn.fx.on small{ color:#3a4256; }
+  .btn.fxdrop.on{ background:#ffb23e; border-color:#ffcf7a; color:#221200; box-shadow:0 0 18px #ffb23e66; }
+  .btn.fxdrop.on small{ color:#6b3d00; }
+  .btn.fxcolor.on{ background:#ff3bd0; border-color:#ff8fe4; color:#210016; box-shadow:0 0 18px #ff3bd066; }
+  .btn.fxcolor.on small{ color:#6b0049; }
+  .subrule{ height:1px; background:var(--line); margin:16px 0 12px; }
+  .sliderRow{ display:flex; align-items:center; gap:12px; margin-top:12px; padding:0 2px; }
+  .sliderLabel{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); white-space:nowrap; }
+  .sliderVal{ font-size:13px; font-weight:700; color:var(--ink); min-width:38px; text-align:right; }
+  input[type=range]{ -webkit-appearance:none; appearance:none; flex:1; height:34px; background:transparent; }
+  input[type=range]::-webkit-slider-runnable-track{ height:8px; border-radius:999px; background:var(--line); }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; width:30px; height:30px; margin-top:-11px;
+    border-radius:50%; background:#ff3bd0; border:2px solid #ff8fe4; box-shadow:0 0 12px #ff3bd066; cursor:pointer; }
+
+  .fxDeck{ border:1px solid #293044; border-radius:20px; padding:12px;
+    background:radial-gradient(circle at 50% 0%, #20263a 0%, #0b0d14 54%, #05060a 100%);
+    box-shadow:inset 0 1px 0 #ffffff12, 0 18px 42px #0008; }
+  .fxTypeGrid{ display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+  .fxType{ min-height:66px; font-size:14px; letter-spacing:.05em; text-align:center; flex-direction:column; gap:4px; }
+  .fxType small{ display:block; font-size:10px; letter-spacing:.12em; color:#ffffff75; text-transform:uppercase; }
+  .fxType.on small{ color:#11182799; }
+  .fxType.on{ background:#eef2ff; color:#090b12; border-color:#fff; box-shadow:0 0 22px #ffffff70; }
+  .fxType[data-fxtype="colorHit"].on,
+  .fxType[data-fxtype="colorStrobe"].on{ background:#ff34cb; border-color:#ff9be8; box-shadow:0 0 22px #ff34cb77; }
+  .fxType[data-fxtype="whiteHit"].on,
+  .fxType[data-fxtype="whiteHitStrobe"].on{ background:#ffffff; color:#080910; border-color:#fff; box-shadow:0 0 24px #ffffff90, 0 0 52px #dff0ff55; }
+  .fxType[data-fxtype="drop"].on{ background:#ffb23e; border-color:#ffd48c; box-shadow:0 0 22px #ffb23e66; }
+  .fxModeRow{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px; }
+  .fxModeRow .btn{ min-height:48px; font-size:13px; }
+  .fxReleaseGrid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:10px; }
+  .fxReleaseGrid .btn{ min-height:50px; font-size:13px; }
+  .fxReleaseGrid .wideRelease{ grid-column:1 / -1; }
+  .fxEngage{ width:100%; min-height:126px; margin-top:12px; border-radius:24px;
+    font-size:30px; letter-spacing:.08em; background:linear-gradient(180deg,#2a3040,#0c0f17);
+    border:2px solid #3a4158; box-shadow:inset 0 2px 0 #ffffff12, 0 10px 28px #0009;
+    position:relative; overflow:hidden; touch-action:none; user-select:none; flex-direction:column; --xpad:33.333%; }
+  .fxEngage::before{ content:""; position:absolute; inset:0 auto 0 0; width:var(--xpad);
+    background:linear-gradient(90deg,#ff34cb88,#26e0ff66); opacity:.75; pointer-events:none; }
+  .fxEngage::after{ content:attr(data-xpad-label) "  " attr(data-rate); position:absolute; right:16px; bottom:12px;
+    font-size:11px; letter-spacing:.16em; color:#ffffff80; pointer-events:none; }
+  .fxEngage span{ position:relative; z-index:1; }
+  .fxEngage.dragging{ border-color:#fff; box-shadow:0 0 28px #26e0ff70, 0 10px 28px #0009; }
+  .fxEngage.on{ background:radial-gradient(circle at 50% 25%,#ffffff 0%,#dce7ff 28%,#7a8cff 100%);
+    color:#06070b; border-color:#fff; box-shadow:0 0 32px #ffffff80, 0 0 70px #5f8cff55; }
+  .fxSliderBox{ margin-top:12px; border:1px solid #252b3d; border-radius:16px; padding:14px 14px 12px;
+    background:#090b12; position:relative; overflow:hidden; min-height:76px; touch-action:none;
+    user-select:none; cursor:ew-resize; --fill:0%; }
+  .fxSliderBox::before{ content:""; position:absolute; inset:0 auto 0 0; width:var(--fill);
+    background:linear-gradient(90deg,#ff34cb66,#26e0ff55); pointer-events:none; }
+  .fxSliderBox::after{ content:"SLIDE"; position:absolute; right:14px; bottom:9px;
+    font-size:10px; letter-spacing:.18em; color:#ffffff45; pointer-events:none; }
+  .fxSliderBox.dragging{ border-color:#ffffffcc; box-shadow:0 0 22px #26e0ff55; }
+  .fxSliderBox > *{ position:relative; z-index:1; }
+  .fxSliderTop{ display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;
+    color:var(--dim); font-size:11px; letter-spacing:.14em; text-transform:uppercase; }
+  .fxSliderTop b{ color:var(--ink); font-size:15px; letter-spacing:.02em; }
+  .fxSliderBox input[type=range]{ position:absolute; inset:0; width:100%; height:100%; opacity:0; margin:0; }
+  .beatGrid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:10px; }
+  .beatGrid .btn{ min-height:54px; font-size:17px; }
+  .fxBottom{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:9px; margin-top:12px; }
+  .fxBottom .btn{ min-height:72px; font-size:18px; }
+  .fxHit.on{ background:#ff34cb; color:#210016; border-color:#ff9be8; box-shadow:0 0 22px #ff34cb88; }
+  .fxOff{ border-color:#4a1f2a; color:#ffb3c3; }
+
+  select{ appearance:none; width:100%; min-height:62px; border-radius:14px;
+    border:1px solid var(--line); background:var(--panel);
+    padding:10px 40px 10px 16px; font-size:16px; font-weight:600;
+    background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+    background-position:calc(100% - 20px) 26px, calc(100% - 14px) 26px;
+    background-size:6px 6px, 6px 6px; background-repeat:no-repeat; }
+
+  .stepper{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+  .toast{ position:fixed; left:50%; bottom:20px; transform:translateX(-50%) translateY(20px);
+    background:#000c; border:1px solid var(--line); border-radius:999px;
+    padding:8px 16px; font-size:13px; color:var(--dim); opacity:0; pointer-events:none;
+    transition:opacity .2s, transform .2s; }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+  <h1><span class="dot" id="dot"></span> <span class="brand">KRL</span> // VFX <span style="color:var(--dim);font-weight:500">remote</span></h1>
+
+  <div class="status">
+    <div class="big" id="stScene">—</div>
+    <div class="sub" id="stColor">colorway —</div>
+    <div class="metaRow">
+      <span>logo <b id="stLogo">—</b></span>
+      <span>look <b id="stLook">—</b></span>
+      <span>group <b id="stSceneGroup">—</b></span>
+      <span><b id="stFps">—</b> fps</span>
+      <span><b id="stRes">—</b>% res</span>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="label">Effects</div>
+    <div class="fxDeck">
+      <div class="fxTypeGrid">
+        <button class="btn fxType" id="fxTypeWhite" data-fxtype="white" data-fxgroup="composite-flash">WHITE STROBE <small>Composite Flash</small></button>
+        <button class="btn fxType" id="fxTypeHit" data-fxtype="colorHit" data-fxgroup="composite-color">COLOR HIT <small>Composite Color</small></button>
+        <button class="btn fxType" id="fxTypeStrobe" data-fxtype="colorStrobe" data-fxgroup="composite-color">COLOR STROBE <small>Composite Color</small></button>
+        <button class="btn fxType" id="fxTypeDrop" data-fxtype="drop" data-fxgroup="motion-clock">DROP VELOCITY <small>Motion Clock</small></button>
+        <button class="btn fxType" id="fxTypeWhiteHit" data-fxtype="whiteHit" data-fxgroup="palette-white">WHITE HIT <small>Palette White</small></button>
+        <button class="btn fxType" id="fxTypeWhiteHitStrobe" data-fxtype="whiteHitStrobe" data-fxgroup="palette-white">WHITE HIT STROBE <small>Palette White</small></button>
+      </div>
+      <div class="fxModeRow">
+        <button class="btn" id="fxLatch">Latch <small>tap on/off</small></button>
+        <button class="btn" id="fxHold">Hold <small>press + release</small></button>
+      </div>
+      <div class="fxReleaseGrid">
+        <button class="btn" id="fxReleaseNone" data-releasefx="none">Release Off</button>
+        <button class="btn" id="fxReleaseColor" data-releasefx="color">Release Color</button>
+        <button class="btn" id="fxReleaseWhite" data-releasefx="white">Release White</button>
+        <button class="btn wideRelease" id="fxVelocitySpike">Release Velocity Spike <small>huge burst then ease back</small></button>
+      </div>
+      <button class="btn fxEngage" id="fxOn" data-xpad-label="X-PAD RATE" data-rate="1 beat"><span>FX ON</span></button>
+
+      <div class="fxSliderBox" data-fxpad="depth">
+        <div class="fxSliderTop"><span>LEVEL / DEPTH</span><b id="fxDepthVal">80%</b></div>
+        <input type="range" id="fxDepth" min="0" max="100" value="80">
+      </div>
+      <div class="fxSliderBox" data-fxpad="rate">
+        <div class="fxSliderTop"><span>TIME / RATE</span><b id="fxRateVal">1 beat</b></div>
+        <input type="range" id="fxRate" min="0" max="7" step="1" value="2">
+      </div>
+      <div class="fxSliderBox" data-fxpad="velocity">
+        <div class="fxSliderTop"><span>VELOCITY RAMP</span><b id="fxVelocityRampVal">0.16s</b></div>
+        <input type="range" id="fxVelocityRamp" min="5" max="200" value="16">
+      </div>
+      <div class="fxSliderBox" data-fxpad="white">
+        <div class="fxSliderTop"><span>WHITE HIT POWER</span><b id="fxWhiteHitStrengthVal">90%</b></div>
+        <input type="range" id="fxWhiteHitStrength" min="0" max="100" value="90">
+      </div>
+      <div class="beatGrid">
+        <button class="btn" id="fxBeat05" data-fxbeat="0.5">1/2</button>
+        <button class="btn" id="fxBeat1" data-fxbeat="1">1</button>
+        <button class="btn" id="fxBeat2" data-fxbeat="2">2</button>
+        <button class="btn" id="fxBeat4" data-fxbeat="4">4</button>
+      </div>
+      <div class="fxBottom">
+        <button class="btn fxHit" id="fxHit">HIT</button>
+        <button class="btn fxdrop" id="fxDrop">DROP</button>
+        <button class="btn fxOff" id="fxOff">OFF</button>
+      </div>
+      <button class="btn wide fxcolor" id="fxColorCycle" data-toggle="fx:colorStrobeCycle" style="margin-top:10px">CYCLE COLORS <small>new colour each pulse</small></button>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="label">Scene</div>
+    <div class="stepper">
+      <button class="btn" data-cmd="scene:prev">◀ Prev</button>
+      <button class="btn" data-cmd="scene:next">Next ▶</button>
+    </div>
+    <select id="sceneSel" style="margin-bottom:10px"></select>
+    <button class="btn wide" id="sceneLock" data-toggle="scene:lock">Scene Lock <small>hold current scene</small></button>
+  </div>
+
+  <div class="group">
+    <div class="label">Colorway</div>
+    <div class="stepper">
+      <button class="btn" data-cmd="color:prev">◀ Prev</button>
+      <button class="btn" data-cmd="color:next">Next ▶</button>
+    </div>
+    <select id="colorSel"></select>
+  </div>
+
+  <div class="group">
+    <div class="label">Logo</div>
+    <div class="grid g3">
+      <button class="btn" id="logoKrl"   data-toggle="logo:krl">KRL <small>lock</small></button>
+      <button class="btn" id="logoWoods" data-toggle="logo:woods">Woods <small>lock</small></button>
+      <button class="btn accent" data-cmd="logo:flip">Swap <small>flip now</small></button>
+    </div>
+  </div>
+
+  <div class="group">
+    <div class="label">Modes</div>
+    <div class="grid g3">
+      <button class="btn" id="micBtn"     data-toggle="mic:toggle">Mic <small>reactive</small></button>
+      <button class="btn" id="uiBtn"      data-toggle="ui:toggle">UI <small>show/hide</small></button>
+      <button class="btn" id="goodbyeBtn" data-toggle="goodbye:toggle">Goodbye <small>message</small></button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var dot = document.getElementById('dot');
+  var toastEl = document.getElementById('toast'), toastT;
+  function toast(m){ toastEl.textContent = m; toastEl.classList.add('show');
+    clearTimeout(toastT); toastT = setTimeout(function(){ toastEl.classList.remove('show'); }, 900); }
+
+  function send(action, value){
+    fetch('/bus', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ type:'cmd', action:action, value:value }) }).catch(function(){});
+  }
+
+  // The laptop is the source of truth, but taps feel instant if we flip the button
+  // right away and briefly ignore incoming status for that button — this stops the
+  // "fighting" flicker if a status frame that predates the tap arrives just after it.
+  var pending = {};   // id -> timestamp until which we trust the local (optimistic) state
+  function optimistic(id){ if(id){ var el=document.getElementById(id); if(el) el.classList.toggle('on'); pending[id]=Date.now()+700; } }
+
+  // simple command buttons + toggle buttons (state comes back via status)
+  document.querySelectorAll('[data-cmd]').forEach(function(b){
+    b.addEventListener('click', function(){ send(b.getAttribute('data-cmd')); toast(b.textContent.trim()); });
+  });
+  document.querySelectorAll('[data-toggle]').forEach(function(b){
+    b.addEventListener('click', function(){ optimistic(b.id); send(b.getAttribute('data-toggle')); });
+  });
+
+  var fxType = 'colorHit';
+  var fxDepth = 80;
+  var fxRate = 1;
+  var fxLatchMode = 'latch';
+  var fxReleaseAction = 'none';
+  var fxVelocityReleaseSpike = false;
+  var fxVelocityRamp = 16;
+  var fxWhiteHitStrength = 90;
+  var fxOn = false;
+  var fxMeta = {
+    white: { group:'composite-flash', label:'Composite Flash' },
+    colorHit: { group:'composite-color', label:'Composite Color' },
+    colorStrobe: { group:'composite-color', label:'Composite Color' },
+    drop: { group:'motion-clock', label:'Motion Clock' },
+    whiteHit: { group:'palette-white', label:'Palette White' },
+    whiteHitStrobe: { group:'palette-white', label:'Palette White' }
+  };
+  var rateSteps = [0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4];
+  var rampSteps = [1.80, 1.20, 0.80, 0.50, 0.30, 0.18, 0.10, 0.05];
+  var fxOnBtn = document.getElementById('fxOn');
+  var fxDepthInput = document.getElementById('fxDepth');
+  var fxDepthVal = document.getElementById('fxDepthVal');
+  var fxRateInput = document.getElementById('fxRate');
+  var fxRateVal = document.getElementById('fxRateVal');
+  var fxVelocityRampInput = document.getElementById('fxVelocityRamp');
+  var fxVelocityRampVal = document.getElementById('fxVelocityRampVal');
+  var fxWhiteHitStrengthInput = document.getElementById('fxWhiteHitStrength');
+  var fxWhiteHitStrengthVal = document.getElementById('fxWhiteHitStrengthVal');
+  var fxHitBtn = document.getElementById('fxHit');
+  var fxDropBtn = document.getElementById('fxDrop');
+  var fxHitT = null;
+  var fxDropT = null;
+
+  function vibrate(ms){ if(navigator.vibrate) navigator.vibrate(ms || 18); }
+  function rateLabel(v){
+    if(v === 0.5) return '1/2 beat';
+    if(v === 0.75) return '3/4 beat';
+    return v + (v === 1 ? ' beat' : ' beats');
+  }
+  function rampLabel(seconds){ return Number(seconds).toFixed(2) + 's ramp'; }
+  function nearestRate(v){
+    v = Number(v);
+    var best = rateSteps[0], dist = Math.abs(v - best);
+    for(var i = 1; i < rateSteps.length; i++){
+      var d = Math.abs(v - rateSteps[i]);
+      if(d < dist){ best = rateSteps[i]; dist = d; }
+    }
+    return best;
+  }
+  function rateToIndex(v){
+    v = nearestRate(v);
+    for(var i = 0; i < rateSteps.length; i++){ if(rateSteps[i] === v) return i; }
+    return 2;
+  }
+  function nearestRamp(seconds){
+    seconds = Number(seconds);
+    var best = rampSteps[0], dist = Math.abs(seconds - best);
+    for(var i = 1; i < rampSteps.length; i++){
+      var d = Math.abs(seconds - rampSteps[i]);
+      if(d < dist){ best = rampSteps[i]; dist = d; }
+    }
+    return best;
+  }
+  function rampToIndex(centiseconds){
+    var seconds = Number(centiseconds) / 100;
+    var best = nearestRamp(seconds);
+    for(var i = 0; i < rampSteps.length; i++){ if(rampSteps[i] === best) return i; }
+    return 2;
+  }
+  function setPadFill(kind, pct){
+    var el = document.querySelector('[data-fxpad="' + kind + '"]');
+    if(el) el.style.setProperty('--fill', Math.max(0, Math.min(100, pct)) + '%');
+  }
+  function syncPadFills(){
+    setPadFill('depth', fxDepth);
+    setPadFill('rate', rateToIndex(fxRate) / (rateSteps.length - 1) * 100);
+    setPadFill('velocity', (200 - fxVelocityRamp) / 195 * 100);
+    setPadFill('white', fxWhiteHitStrength);
+  }
+  function syncXPad(){
+    if(!fxOnBtn) return;
+    if(fxType === 'drop'){
+      fxOnBtn.style.setProperty('--xpad', (rampToIndex(fxVelocityRamp) / (rampSteps.length - 1) * 100) + '%');
+      fxOnBtn.setAttribute('data-xpad-label', 'X-PAD RAMP');
+      fxOnBtn.setAttribute('data-rate', rampLabel(fxVelocityRamp / 100));
+    }else if(fxType === 'whiteHit'){
+      fxOnBtn.style.setProperty('--xpad', (rateToIndex(fxRate) / (rateSteps.length - 1) * 100) + '%');
+      fxOnBtn.setAttribute('data-xpad-label', 'X-PAD HIT SPEED');
+      fxOnBtn.setAttribute('data-rate', rateLabel(fxRate));
+    }else{
+      fxOnBtn.style.setProperty('--xpad', (rateToIndex(fxRate) / (rateSteps.length - 1) * 100) + '%');
+      fxOnBtn.setAttribute('data-xpad-label', 'X-PAD STROBE');
+      fxOnBtn.setAttribute('data-rate', rateLabel(fxRate));
+    }
+  }
+  function syncFxDeck(){
+    document.querySelectorAll('[data-fxtype]').forEach(function(b){
+      var type = b.getAttribute('data-fxtype');
+      b.classList.toggle('on', type === fxType);
+      if(fxMeta[type]){
+        b.setAttribute('data-fxgroup', fxMeta[type].group);
+        var tag = b.querySelector('small');
+        if(tag) tag.textContent = fxMeta[type].label;
+      }
+    });
+    setToggle('fxLatch', fxLatchMode === 'latch');
+    setToggle('fxHold', fxLatchMode === 'hold');
+    setToggle('fxReleaseNone', fxReleaseAction === 'none');
+    setToggle('fxReleaseColor', fxReleaseAction === 'color');
+    setToggle('fxReleaseWhite', fxReleaseAction === 'white');
+    setToggle('fxVelocitySpike', fxVelocityReleaseSpike);
+    if(fxOnBtn) fxOnBtn.classList.toggle('on', fxOn);
+    if(fxDepthInput && document.activeElement !== fxDepthInput) fxDepthInput.value = fxDepth;
+    if(fxDepthVal) fxDepthVal.textContent = Math.round(fxDepth) + '%';
+    if(fxRateInput && document.activeElement !== fxRateInput) fxRateInput.value = rateToIndex(fxRate);
+    if(fxRateVal) fxRateVal.textContent = rateLabel(fxRate);
+    if(fxVelocityRampInput && document.activeElement !== fxVelocityRampInput) fxVelocityRampInput.value = fxVelocityRamp;
+    if(fxVelocityRampVal) fxVelocityRampVal.textContent = (fxVelocityRamp / 100).toFixed(2) + 's';
+    if(fxWhiteHitStrengthInput && document.activeElement !== fxWhiteHitStrengthInput) fxWhiteHitStrengthInput.value = fxWhiteHitStrength;
+    if(fxWhiteHitStrengthVal) fxWhiteHitStrengthVal.textContent = Math.round(fxWhiteHitStrength) + '%';
+    setToggle('fxBeat05', fxRate === 0.5);
+    setToggle('fxBeat1',  fxRate === 1);
+    setToggle('fxBeat2',  fxRate === 2);
+    setToggle('fxBeat4',  fxRate === 4);
+    syncPadFills();
+    syncXPad();
+  }
+  function setFxType(type){
+    if(type !== fxType) fxOn = false;
+    fxType = type;
+    send('fx:setType', type);
+    syncFxDeck();
+  }
+  function setFxOn(on){
+    fxOn = !!on;
+    send(fxOn ? 'fx:on' : 'fx:off');
+    syncFxDeck();
+  }
+  function setFxDepth(value){
+    fxDepth = Math.max(0, Math.min(100, Number(value) || 0));
+    send('fx:setDepth', fxDepth);
+    syncFxDeck();
+  }
+  function setFxRate(value){
+    fxRate = nearestRate(value);
+    send('fx:setRate', fxRate);
+    syncFxDeck();
+  }
+  function setFxVelocityRamp(value){
+    fxVelocityRamp = Math.max(5, Math.min(200, Number(value) || 16));
+    send('fx:setVelocityRamp', fxVelocityRamp / 100);
+    syncFxDeck();
+  }
+  function setFxWhiteHitStrength(value){
+    fxWhiteHitStrength = Math.max(0, Math.min(100, Number(value) || 0));
+    send('fx:setWhiteHitStrength', fxWhiteHitStrength);
+    syncFxDeck();
+  }
+  function bindFxPad(el){
+    var kind = el.getAttribute('data-fxpad');
+    var dragging = false;
+    var lastSent = 0;
+    var lastValue = null;
+    var lastPct = 0;
+    function pctFromEvent(e){
+      if(typeof e.clientX !== 'number') return lastPct;
+      var r = el.getBoundingClientRect();
+      lastPct = Math.max(0, Math.min(1, (e.clientX - r.left) / Math.max(1, r.width)));
+      return lastPct;
+    }
+    function applyPct(pct, forceSend){
+      var now = performance.now();
+      if(kind === 'depth'){
+        var depth = Math.round(pct * 100);
+        if(depth === lastValue && !forceSend) return;
+        fxDepth = depth;
+        if(fxDepthInput) fxDepthInput.value = depth;
+        if(fxDepthVal) fxDepthVal.textContent = depth + '%';
+        setPadFill('depth', depth);
+        if(forceSend || now - lastSent > 45){ send('fx:setDepth', depth); lastSent = now; lastValue = depth; }
+      }else if(kind === 'rate'){
+        var idx = Math.max(0, Math.min(rateSteps.length - 1, Math.round(pct * (rateSteps.length - 1))));
+        var rate = rateSteps[idx];
+        if(rate === lastValue && !forceSend) return;
+        fxRate = rate;
+        if(fxRateInput) fxRateInput.value = idx;
+        if(fxRateVal) fxRateVal.textContent = rateLabel(rate);
+        setPadFill('rate', idx / (rateSteps.length - 1) * 100);
+        syncFxDeck();
+        if(forceSend || now - lastSent > 45){ send('fx:setRate', rate); lastSent = now; lastValue = rate; }
+      }else if(kind === 'velocity'){
+        var ramp = Math.round(200 - pct * 195);
+        if(ramp === lastValue && !forceSend) return;
+        fxVelocityRamp = ramp;
+        if(fxVelocityRampInput) fxVelocityRampInput.value = ramp;
+        if(fxVelocityRampVal) fxVelocityRampVal.textContent = (ramp / 100).toFixed(2) + 's';
+        setPadFill('velocity', (200 - ramp) / 195 * 100);
+        if(forceSend || now - lastSent > 45){ send('fx:setVelocityRamp', ramp / 100); lastSent = now; lastValue = ramp; }
+      }else if(kind === 'white'){
+        var white = Math.round(pct * 100);
+        if(white === lastValue && !forceSend) return;
+        fxWhiteHitStrength = white;
+        if(fxWhiteHitStrengthInput) fxWhiteHitStrengthInput.value = white;
+        if(fxWhiteHitStrengthVal) fxWhiteHitStrengthVal.textContent = white + '%';
+        setPadFill('white', white);
+        if(forceSend || now - lastSent > 45){ send('fx:setWhiteHitStrength', white); lastSent = now; lastValue = white; }
+      }
+    }
+    el.addEventListener('pointerdown', function(e){
+      e.preventDefault();
+      dragging = true;
+      el.classList.add('dragging');
+      if(el.setPointerCapture) el.setPointerCapture(e.pointerId);
+      vibrate(8);
+      applyPct(pctFromEvent(e), true);
+    });
+    el.addEventListener('pointermove', function(e){
+      if(!dragging) return;
+      e.preventDefault();
+      applyPct(pctFromEvent(e), false);
+    });
+    ['pointerup','pointercancel','lostpointercapture'].forEach(function(evt){
+      el.addEventListener(evt, function(e){
+        if(!dragging) return;
+        dragging = false;
+        el.classList.remove('dragging');
+        applyPct(pctFromEvent(e), true);
+      });
+    });
+  }
+  document.querySelectorAll('[data-fxtype]').forEach(function(b){
+    b.addEventListener('click', function(){ setFxType(b.getAttribute('data-fxtype')); vibrate(12); });
+  });
+  document.getElementById('fxLatch').addEventListener('click', function(){
+    fxLatchMode = 'latch'; send('fx:setLatchMode', fxLatchMode); syncFxDeck();
+  });
+  document.getElementById('fxHold').addEventListener('click', function(){
+    fxLatchMode = 'hold'; send('fx:setLatchMode', fxLatchMode); syncFxDeck();
+  });
+  document.querySelectorAll('[data-releasefx]').forEach(function(b){
+    b.addEventListener('click', function(){
+      fxReleaseAction = b.getAttribute('data-releasefx');
+      send('fx:setReleaseAction', fxReleaseAction);
+      syncFxDeck();
+    });
+  });
+  document.getElementById('fxVelocitySpike').addEventListener('click', function(){
+    fxVelocityReleaseSpike = !fxVelocityReleaseSpike;
+    send('fx:setVelocityReleaseSpike', fxVelocityReleaseSpike);
+    syncFxDeck();
+  });
+  var xPadActive = false;
+  var xPadStartX = 0;
+  var xPadDragged = false;
+  var xPadLastSent = 0;
+  var xPadWasOn = false;
+  function rateFromXPad(e){
+    if(typeof e.clientX !== 'number') return fxRate;
+    var r = fxOnBtn.getBoundingClientRect();
+    var pct = Math.max(0, Math.min(1, (e.clientX - r.left) / Math.max(1, r.width)));
+    return rateSteps[Math.max(0, Math.min(rateSteps.length - 1, Math.round(pct * (rateSteps.length - 1))))] || 1;
+  }
+  function rampFromXPad(e){
+    if(typeof e.clientX !== 'number') return fxVelocityRamp / 100;
+    var r = fxOnBtn.getBoundingClientRect();
+    var pct = Math.max(0, Math.min(1, (e.clientX - r.left) / Math.max(1, r.width)));
+    return rampSteps[Math.max(0, Math.min(rampSteps.length - 1, Math.round(pct * (rampSteps.length - 1))))] || 0.18;
+  }
+  function applyXPadRate(e, forceSend){
+    var now = performance.now();
+    if(fxType === 'drop'){
+      var ramp = rampFromXPad(e);
+      var rampCs = Math.round(ramp * 100);
+      fxVelocityRamp = rampCs;
+      if(fxVelocityRampInput) fxVelocityRampInput.value = rampCs;
+      if(fxVelocityRampVal) fxVelocityRampVal.textContent = ramp.toFixed(2) + 's';
+      syncFxDeck();
+      if(forceSend || now - xPadLastSent > 45){
+        send('fx:setVelocityRamp', ramp);
+        xPadLastSent = now;
+      }
+    }else{
+      var rate = rateFromXPad(e);
+      fxRate = rate;
+      if(fxRateInput) fxRateInput.value = rateToIndex(rate);
+      if(fxRateVal) fxRateVal.textContent = rateLabel(rate);
+      syncFxDeck();
+      if(forceSend || now - xPadLastSent > 45){
+        send('fx:setRate', rate);
+        xPadLastSent = now;
+      }
+    }
+  }
+  fxOnBtn.addEventListener('pointerdown', function(e){
+    e.preventDefault();
+    xPadActive = true;
+    xPadDragged = false;
+    xPadStartX = e.clientX;
+    xPadWasOn = fxOn;
+    fxOnBtn.classList.add('dragging');
+    if(fxOnBtn.setPointerCapture) fxOnBtn.setPointerCapture(e.pointerId);
+    vibrate(14);
+    applyXPadRate(e, true);
+    if(fxLatchMode === 'hold' || !fxOn) setFxOn(true);
+  });
+  fxOnBtn.addEventListener('pointermove', function(e){
+    if(!xPadActive) return;
+    e.preventDefault();
+    if(Math.abs(e.clientX - xPadStartX) > 10) xPadDragged = true;
+    applyXPadRate(e, false);
+  });
+  ['pointerup','pointercancel','lostpointercapture'].forEach(function(evt){
+    fxOnBtn.addEventListener(evt, function(e){
+      if(!xPadActive) return;
+      xPadActive = false;
+      fxOnBtn.classList.remove('dragging');
+      applyXPadRate(e, true);
+      if(fxLatchMode === 'hold'){
+        setFxOn(false);
+      }else if(!xPadDragged){
+        setFxOn(!xPadWasOn);
+      }
+    });
+  });
+  fxOnBtn.addEventListener('click', function(e){ e.preventDefault(); });
+  fxDepthInput.addEventListener('input', function(){ setFxDepth(fxDepthInput.value); });
+  fxRateInput.addEventListener('input', function(){ setFxRate(rateSteps[Number(fxRateInput.value)] || 1); });
+  fxVelocityRampInput.addEventListener('input', function(){ setFxVelocityRamp(fxVelocityRampInput.value); });
+  fxWhiteHitStrengthInput.addEventListener('input', function(){ setFxWhiteHitStrength(fxWhiteHitStrengthInput.value); });
+  document.querySelectorAll('[data-fxpad]').forEach(bindFxPad);
+  document.querySelectorAll('[data-fxbeat]').forEach(function(b){
+    b.addEventListener('click', function(){ setFxRate(Number(b.getAttribute('data-fxbeat'))); vibrate(10); });
+  });
+  fxHitBtn.addEventListener('click', function(){
+    send('fx:hit'); vibrate(20); toast('Hit!');
+    fxHitBtn.classList.add('on');
+    clearTimeout(fxHitT); fxHitT = setTimeout(function(){ fxHitBtn.classList.remove('on'); }, 560);
+  });
+  fxDropBtn.addEventListener('click', function(){
+    send('fx:drop'); vibrate(28); toast('Drop!');
+    fxDropBtn.classList.add('on');
+    clearTimeout(fxDropT); fxDropT = setTimeout(function(){ fxDropBtn.classList.remove('on'); }, 2600);
+  });
+  document.getElementById('fxOff').addEventListener('click', function(){
+    fxOn = false;
+    send('fx:kill');
+    syncFxDeck();
+    toast('FX off');
+  });
+
+  var sceneSel = document.getElementById('sceneSel');
+  var colorSel = document.getElementById('colorSel');
+  sceneSel.addEventListener('change', function(){ send('scene:goto', Number(sceneSel.value)); });
+  colorSel.addEventListener('change', function(){ send('color:goto', Number(colorSel.value)); });
+
+  function fillSelect(sel, names){
+    if(sel.options.length === names.length) return;   // already built
+    sel.innerHTML = '';
+    names.forEach(function(n, i){
+      var o = document.createElement('option'); o.value = i; o.textContent = n; sel.appendChild(o);
+    });
+  }
+  function setToggle(id, on){
+    if(pending[id]){                       // recently tapped — trust local until the window passes
+      if(Date.now() < pending[id]) return;
+      delete pending[id];
+    }
+    var el = document.getElementById(id); if(!el) return;
+    el.classList.toggle('on', !!on);
+  }
+
+  function applyStatus(s){
+    if(Array.isArray(s.scenes)) fillSelect(sceneSel, s.scenes);
+    if(Array.isArray(s.colors)) fillSelect(colorSel, s.colors);
+
+    document.getElementById('stScene').textContent = s.sceneName || '—';
+    document.getElementById('stColor').textContent = 'colorway · ' + (s.colorName || '—');
+    document.getElementById('stLogo').textContent  =
+      s.logo === 'woods' ? 'Woods' : (s.logo === 'outro' ? 'Goodbye' : 'KRL');
+    document.getElementById('stLook').textContent  = s.look || '—';
+    document.getElementById('stSceneGroup').textContent = s.sceneGroup || '—';
+    document.getElementById('stFps').textContent   = (s.fps != null ? s.fps : '—');
+    document.getElementById('stRes').textContent   = (s.res != null ? s.res : '—');
+
+    // keep dropdowns in sync unless the user is mid-pick
+    if(document.activeElement !== sceneSel && s.scene != null) sceneSel.value = s.scene;
+    if(document.activeElement !== colorSel && s.color != null) colorSel.value = s.color;
+
+    setToggle('sceneLock', s.sceneLock);
+    setToggle('logoKrl',   s.krlLock);
+    setToggle('logoWoods', s.woodsLock);
+    setToggle('micBtn',    s.mic);
+    setToggle('uiBtn',     !s.uiShown);   // highlight when UI is hidden
+    setToggle('goodbyeBtn', s.goodbye);
+
+    // effects
+    fxType = s.fxType || (s.colorStrobe ? 'colorStrobe' : (s.strobe ? 'white' : fxType));
+    if(s.fxMeta) fxMeta = s.fxMeta;
+    fxDepth = s.fxDepth != null ? s.fxDepth : (s.colorHitIntensity != null ? s.colorHitIntensity : fxDepth);
+    fxRate = s.fxRate != null ? nearestRate(s.fxRate) : nearestRate(s.colorStrobeRate || s.strobeSpeed || fxRate);
+    fxLatchMode = s.fxLatchMode || fxLatchMode;
+    fxReleaseAction = s.fxReleaseAction || fxReleaseAction;
+    fxVelocityReleaseSpike = s.fxVelocityReleaseSpike != null ? !!s.fxVelocityReleaseSpike : fxVelocityReleaseSpike;
+    fxVelocityRamp = s.fxVelocityRamp != null ? Math.round(Number(s.fxVelocityRamp) * 100) : fxVelocityRamp;
+    fxWhiteHitStrength = s.fxWhiteHitStrength != null ? s.fxWhiteHitStrength : fxWhiteHitStrength;
+    fxOn = s.fxOn != null ? !!s.fxOn : !!(s.strobe || s.colorStrobe);
+    syncFxDeck();
+    if(s.drop) fxDropBtn.classList.add('on');   // keep lit while a boost is live (e.g. a second phone)
+    if(s.colorHit) fxHitBtn.classList.add('on');
+    setToggle('fxColorCycle', s.colorStrobeCycle);
+  }
+
+  function connect(){
+    var es = new EventSource('/bus');
+    es.onopen = function(){
+      dot.classList.add('live');
+      send('hello');   // ask the visuals to broadcast current state
+    };
+    es.onmessage = function(ev){
+      var s; try { s = JSON.parse(ev.data); } catch(e){ return; }
+      if(s && s.type === 'status') applyStatus(s);
+    };
+    es.onerror = function(){ dot.classList.remove('live'); };  // auto-reconnects
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

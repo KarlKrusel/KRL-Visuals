@@ -475,6 +475,38 @@
     color:rgba(255,255,255,0.5); margin-bottom:7px;
   }
   #lookRow{ display:flex; flex-wrap:wrap; gap:7px; }
+  #effectsSection{ margin-bottom:13px; }
+  #effectsSectionLabel{
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+    color:rgba(255,255,255,0.5); margin-bottom:7px;
+  }
+  .effectsRow{ display:flex; flex-wrap:wrap; gap:7px; }
+  .fxBtn{
+    border:1px solid rgba(255,255,255,0.16);
+    border-radius:999px;
+    background:rgba(255,255,255,0.06);
+    color:rgba(255,255,255,0.82);
+    padding:8px 13px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size:11px; font-weight:800; letter-spacing:0.07em;
+    cursor:pointer;
+  }
+  .fxBtn.active{
+    background:rgba(255,255,255,0.85);
+    border-color:#fff;
+    color:#0b0b12;
+  }
+  .fxDrop.active{
+    background:#ffb23e;
+    border-color:#ffcf7a;
+    color:#221200;
+  }
+  .fxColor.active{
+    background:#ff3bd0;
+    border-color:#ff8fe4;
+    color:#210016;
+  }
   #paletteSection{ margin-bottom:13px; }
   .menuDropdown{
     margin-bottom:13px;
@@ -934,6 +966,27 @@
     <div id="lookSection">
       <div id="lookSectionLabel">Style — press X to cycle</div>
       <div id="lookRow"></div>
+    </div>
+    <div id="effectsSection">
+      <div id="effectsSectionLabel">Effects — live performance</div>
+      <div class="effectsRow">
+        <button class="fxBtn fxStrobe" id="fxStrobeBtn" type="button">White Strobe</button>
+        <button class="fxBtn" id="fxStrobe1xBtn" type="button">1×</button>
+        <button class="fxBtn" id="fxStrobeHalfBtn" type="button">0.5×</button>
+        <button class="fxBtn fxDrop" id="fxDropBtn" type="button">Drop Velocity</button>
+      </div>
+      <div class="effectsRow" style="margin-top:7px">
+        <button class="fxBtn fxColor" id="fxColorHitBtn" type="button">Color Hit</button>
+        <button class="fxBtn fxColor" id="fxColorStrobeBtn" type="button">Color Strobe</button>
+        <button class="fxBtn fxColor" id="fxColorCycleBtn" type="button">Cycle</button>
+        <button class="fxBtn" id="fxColorHalfBtn" type="button">0.5×</button>
+        <button class="fxBtn" id="fxColor1xBtn" type="button">1×</button>
+        <button class="fxBtn" id="fxColor2xBtn" type="button">2×</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:9px; margin-top:8px;">
+        <label for="fxColorIntensity" style="font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace; font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(255,255,255,0.5);">Hit intensity</label>
+        <input type="range" id="fxColorIntensity" min="0" max="100" value="80" style="flex:1;">
+      </div>
     </div>
     <div id="paletteSection" class="menuDropdown">
       <button id="paletteDropdownToggle" class="menuDropdownHead" type="button">
@@ -2097,6 +2150,11 @@
   uniform float u_ca;         // chromatic aberration scale
   uniform float u_vig;        // vignette strength
   uniform float u_strobe;     // white strobe on high energy
+  uniform float u_flash;      // manual performance strobe (0..cap) — global white glow overlay
+  uniform float u_colorHit;          // color-hit blend level (0..1, CPU-driven envelope)
+  uniform float u_colorHitHue;       // hue rotation for the hit colour (radians)
+  uniform float u_colorHitMode;      // 0 = hue rotate, 1 = channel swap
+  uniform float u_colorHitIntensity; // user intensity 0..1
   uniform float u_micReactive;
   uniform float u_logoOn;
   uniform float u_logoOpacity;
@@ -2105,6 +2163,12 @@
   uniform vec2  u_logoMaskRes;
   float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
   float luma(vec3 c){ return dot(c, vec3(0.2126,0.7152,0.0722)); }
+  // rotate colour around the grey (1,1,1) axis — shifts hue while leaving black/white/grey untouched
+  vec3 hueRotate(vec3 c, float a){
+    const vec3 k = vec3(0.57735027);      // normalized (1,1,1)
+    float cs = cos(a), sn = sin(a);
+    return c*cs + cross(k, c)*sn + k*dot(k, c)*(1.0 - cs);
+  }
   void main(){
     vec2 uv = v_uv;
     vec2 d = uv - 0.5;
@@ -2177,6 +2241,18 @@
 
     col = col / (1.0 + col * mix(0.25, 0.38, micMix));   // stronger shoulder under mic peaks
     col = pow(max(col, 0.0), vec3(0.88));
+    // color hit — abrupt hue shift of the FINAL image (all scenes, the logo, everything).
+    // Rotating around the grey axis keeps blacks black and whites white, so negative space
+    // is preserved; only lit/coloured pixels snap to the hit colour. No extra texture reads.
+    if(u_colorHit > 0.001){
+      vec3 hitCol = (u_colorHitMode > 0.5) ? col.gbr : hueRotate(col, u_colorHitHue);
+      float hl = luma(hitCol);
+      hitCol = clamp(mix(vec3(hl), hitCol, 1.30), 0.0, 1.0);   // punchier neon, luma kept (blacks stay black)
+      col = mix(col, hitCol, clamp(u_colorHit * u_colorHitIntensity, 0.0, 1.0));
+    }
+    // manual performance strobe — applied last so it covers every scene AND the logo.
+    // Hard-capped (never a solid-white washout that blinds the room); it's a glow lift, not a flash-bang.
+    col = mix(col, vec3(1.0), clamp(u_flash, 0.0, 0.55));
     fragColor = vec4(col, 1.0);
   }`;
 
@@ -2450,6 +2526,37 @@
      SCENES (crossfade in-shader, no hard cuts)
      ============================================================ */
   const SCENE_NAMES = ['tunnel','kaleido','plasma','grid','prism','ribbons','pulse','lasers','smoke','laser haze','aurora','interference','phase','lattice','ripple','warp','contour','tunnel v2','rave lasers','fractal bloom','helix bloom','halo bloom','prism bloom','fract tunnel','frost shards'];
+  const SCENE_META = [
+    { name:'tunnel',         advancedGroup:'polar-tunnel',        controlDrivers:['polar radius','angle spin','depth rings','kaleidoscope petals'] },
+    { name:'kaleido',        advancedGroup:'kaleido-noise',       controlDrivers:['angular segments','radius','fbm noise','mirror wedge'] },
+    { name:'plasma',         advancedGroup:'fbm-plasma',          controlDrivers:['fbm domain warp','filament bands','plasma pockets','noise core'] },
+    { name:'grid',           advancedGroup:'perspective-grid',    controlDrivers:['horizon','perspective floor','sun bands','scrolling grid depth'] },
+    { name:'prism',          advancedGroup:'prism-shards',        controlDrivers:['diagonal bands','scan lines','fbm shard mask','cross highlights'] },
+    { name:'ribbons',        advancedGroup:'sine-ribbons',        controlDrivers:['sine ribbon paths','fbm flow','ribbon thickness','overlap glow'] },
+    { name:'pulse',          advancedGroup:'radial-pulse',        controlDrivers:['radial distance','petal phase','burst rings','ray spokes'] },
+    { name:'lasers',         advancedGroup:'laser-fan',           controlDrivers:['emitter points','beam angle','fan density','cross sweeps'] },
+    { name:'smoke',          advancedGroup:'fbm-smoke',           controlDrivers:['fbm curl','smoke body','floor fog','light pockets'] },
+    { name:'laser haze',     advancedGroup:'laser-haze',          controlDrivers:['laser fan rig','smoke occlusion','haze mask','beam glow'] },
+    { name:'aurora',         advancedGroup:'aurora-bands',        controlDrivers:['wave bands','vertical falloff','fbm drift','curtain glow'] },
+    { name:'interference',   advancedGroup:'moire-waves',         controlDrivers:['beating sine fields','moire fringes','phase offsets','line spacing'] },
+    { name:'phase',          advancedGroup:'flow-moire',          controlDrivers:['flow preset','sine fields','phase speed','line threshold'] },
+    { name:'lattice',        advancedGroup:'contour-moire',       controlDrivers:['sine lattice','hard contour bands','fine moire','node crossings'] },
+    { name:'ripple',         advancedGroup:'radial-interference', controlDrivers:['moving point sources','radial wave distance','fringe spacing','antinodes'] },
+    { name:'warp',           advancedGroup:'warped-moire',        controlDrivers:['domain warp','sine fields','moire lines','flow curvature'] },
+    { name:'contour',        advancedGroup:'topographic-fbm',     controlDrivers:['fbm height field','contour spacing','height palette','line sharpness'] },
+    { name:'tunnel v2',      advancedGroup:'polar-tunnel',        controlDrivers:['polar depth','twist rotation','ring lanes','spokes diamonds'] },
+    { name:'rave lasers',    advancedGroup:'laser-fan',           controlDrivers:['multi-emitter rig','beam fan density','crossing scans','room haze'] },
+    { name:'fractal bloom',  advancedGroup:'fract-bloom',         controlDrivers:['fract tiling','distance field glow','orbit modulation','radial halo'] },
+    { name:'helix bloom',    advancedGroup:'fract-bloom',         controlDrivers:['fract tiling','helix rotation','angular twist','distance glow'] },
+    { name:'halo bloom',     advancedGroup:'fract-bloom',         controlDrivers:['fract tiling','petal modulation','halo ring','core glow'] },
+    { name:'prism bloom',    advancedGroup:'fract-bloom',         controlDrivers:['fract tiling','diamond distance','prism wings','radial spread'] },
+    { name:'fract tunnel',   advancedGroup:'fractal-tunnel',      controlDrivers:['polar depth','fract tiling','tube distance','spokes rings'] },
+    { name:'frost shards',   advancedGroup:'raymarch-shards',     controlDrivers:['ray direction','fract repetition','march distance','shard edge color'] }
+  ];
+  const SCENE_GROUPS = SCENE_META.map(scene => scene.advancedGroup);
+  if(SCENE_META.length !== SCENE_NAMES.length){
+    console.warn('scene metadata mismatch', { scenes: SCENE_NAMES.length, meta: SCENE_META.length });
+  }
   const CURATED_LOOP_ORDER = [24, 23, 19, 20, 21, 22, 18, 17, 2, 7, 10, 5, 11, 12, 13, 14, 15, 16, 1, 6, 4, 3, 8, 0];
   const CURATED_LOOP_SELECTION = [24, 23, 19, 20, 21, 22, 18, 17, 2, 7, 10, 5, 11, 12, 13, 14, 15, 6, 4];
   const sceneLoopEnabled = SCENE_NAMES.map(() => true);
@@ -2592,7 +2699,8 @@
         + ((transitioning ? sceneB : sceneA) === i ? ' current' : '')
         + (sceneLoopEnabled[i] ? ' inLoop' : '');
       preview.dataset.preview = String(i);
-      preview.innerHTML = `<span class="scenePreviewText"><span class="scenePreviewLabel">${SCENE_NAMES[i]}</span><span class="scenePreviewSub">scene ${i+1}</span></span><span class="scenePreviewState">${sceneLoopEnabled[i] ? 'selected' : 'off'}</span>`;
+      const meta = SCENE_META[i] || { advancedGroup:'untagged', controlDrivers:[] };
+      preview.innerHTML = `<span class="scenePreviewText"><span class="scenePreviewLabel">${SCENE_NAMES[i]}</span><span class="scenePreviewSub">${meta.advancedGroup}</span></span><span class="scenePreviewState">${sceneLoopEnabled[i] ? 'selected' : 'off'}</span>`;
 
       const toggle = document.createElement('button');
       toggle.type = 'button';
@@ -4460,6 +4568,385 @@
   });
 
   /* ============================================================
+     LIVE PERFORMANCE EFFECTS  (phone remote + menu buttons)
+     Global, temporary hits that work over ANY scene/colorway:
+       • White strobe — a capped white-glow pulse in the final composite.
+       • Drop velocity — a momentary scene-motion boost with musical easing.
+     Neither permanently changes the selected scene, look, or speed.
+     ============================================================ */
+  let strobeActive = false;        // white strobe running
+  let strobeSpeed  = 1.0;          // 1.0 = 1x, 0.5 = half-speed
+  let strobeUntil  = 0;            // safety auto-off timestamp (visual clock secs)
+  let dropStart        = -1e9;     // when the current drop boost began
+  let dropVelocityUntil = 0;       // drop boost active until this clock time
+  let dropVelocityBoost = 0;       // live 0..1 envelope, exposed for status
+  let dropVelocityHeld = false;    // true while DROP VELOCITY is held/latch-engaged from the X-Pad
+  let dropReleaseStart = -1e9;     // smooth return-to-normal after release
+  let dropReleaseFrom = 0;
+  let dropSpikeStart = -1e9;       // optional huge velocity burst on release
+  const STROBE_HZ         = 2.4;   // base flash rate; FX timing divides this into beat-style steps
+  const STROBE_MAX        = 0.5;   // white-mix ceiling (shader clamps too) — never a full washout
+  const STROBE_SAFETY_SEC = 45;    // auto-stop if left on or the phone drops off Wi-Fi
+  const DROP_DUR      = 2.6;       // seconds of boost per Drop tap
+  const DROP_ATTACK   = 0.16;      // fast ramp-in so the hit lands with the drop
+  const DROP_RELEASE  = 1.15;      // smooth return to original speed when released
+  const DROP_STRENGTH = 1.6;       // extra scene-motion multiplier at the peak
+  const DROP_SPIKE_DUR = 0.38;
+  const DROP_SPIKE_STRENGTH = 1.15;
+
+  // ---- color hit / color strobe (abrupt hue shift, NOT white) ----
+  let colorHitStart      = -1e9;   // when the current single hit began
+  let colorHitUntil      = 0;      // single hit ends at this clock time
+  let colorHitLevel      = 0;      // live 0..1 blend, exposed for status
+  let colorHitHeld       = false;  // true while COLOR HIT is held/latch-engaged from FX ON
+  let colorHitHue        = 2.0944; // hue rotation for the hit (radians); cycles per hit
+  let colorHitMode       = 0;      // 0 = hue rotate, 1 = channel swap
+  let colorHitIntensity  = 0.8;    // user intensity 0..1
+  let colorStrobeEnabled = false;  // rapid alternate normal <-> hit colour
+  let colorStrobeRate    = 1.0;    // 0.5 / 1 / 2 / 4
+  let colorStrobeUntil   = 0;      // safety auto-off
+  let colorStrobeCycle   = false;  // step to a NEW hue each pulse (strobe THROUGH colours, not one)
+  let lastColorStrobeCyc = -1;     // tracks pulse-cycle index so we advance the hue once per flash
+  let colorHitHueIdx     = 0;
+  let whiteHitStart      = -1e9;   // short white final-pass glow hit
+  let whiteHitUntil      = 0;
+  let whiteHitLevel      = 0;
+  let whiteHitAttack     = 0.018;
+  let whiteHitHold       = 0.055;
+  let whiteHitRelease    = 0.32;
+  let whiteHitStrobeEnabled = false;
+  let whiteHitStrobeUntil   = 0;
+  const COLORHIT_ATTACK  = 0.02;   // snap in
+  const COLORHIT_HOLD    = 0.12;   // brief hold
+  const COLORHIT_RELEASE = 0.42;   // smooth ease out
+  const COLOR_STROBE_HZ  = 2.2;    // base alternate rate; FX timing divides this into beat-style steps
+  const COLOR_HIT_HUES   = [2.0944, -2.0944, 1.0472, 3.1416, -1.0472];  // vivid, varied per tap
+  const WHITEHIT_ATTACK  = 0.018;
+  const WHITEHIT_HOLD    = 0.055;
+  const WHITEHIT_RELEASE = 0.32;
+  const WHITEHIT_MAX     = 0.54;
+  function nextColorHitHue(){ colorHitHueIdx = (colorHitHueIdx + 1) % COLOR_HIT_HUES.length; return COLOR_HIT_HUES[colorHitHueIdx]; }
+
+  // DJM-style remote FX state. This is a control layer over the existing final-pass
+  // effects, so scenes remain untouched and performance stays predictable.
+  let fxType = 'colorHit';          // white | colorHit | colorStrobe | drop | whiteHit | whiteHitStrobe
+  let fxDepth = 0.8;                // 0..1, clamps intensity/depth for all live FX
+  let fxRate = 1.0;                 // musical beat length: 0.5..4 (larger = slower)
+  let fxOn = false;                 // latch/hold state for the currently selected FX
+  let fxLatchMode = 'latch';        // latch | hold
+  let fxReleaseAction = 'none';     // none | color | white
+  let fxVelocityReleaseSpike = false;
+  let fxVelocityRamp = DROP_ATTACK; // seconds of attack into the drop velocity envelope
+  let fxWhiteHitStrength = 0.90;    // white-hit / white-hit-strobe intensity
+  const FX_TYPES = ['white', 'colorHit', 'colorStrobe', 'drop', 'whiteHit', 'whiteHitStrobe'];
+  const FX_META = {
+    white: {
+      group: 'composite-flash',
+      label: 'Composite Flash',
+      engine: 'final composite u_flash',
+      controls: ['fxRate', 'fxDepth', 'u_flash']
+    },
+    colorHit: {
+      group: 'composite-color',
+      label: 'Composite Color',
+      engine: 'final composite u_colorHit',
+      controls: ['fxDepth', 'u_colorHit', 'u_colorHitHue']
+    },
+    colorStrobe: {
+      group: 'composite-color',
+      label: 'Composite Color',
+      engine: 'final composite u_colorHit strobe',
+      controls: ['fxRate', 'fxDepth', 'u_colorHit', 'u_colorHitHue']
+    },
+    drop: {
+      group: 'motion-clock',
+      label: 'Motion Clock',
+      engine: 'sceneClock speed and drop energy',
+      controls: ['fxVelocityRamp', 'dropVelocityBoost', 'sceneClock']
+    },
+    whiteHit: {
+      group: 'palette-white',
+      label: 'Palette White',
+      engine: 'scene palette uniforms u_c0-u_c3',
+      controls: ['fxRate', 'fxWhiteHitStrength', 'u_c0', 'u_c1', 'u_c2', 'u_c3']
+    },
+    whiteHitStrobe: {
+      group: 'palette-white',
+      label: 'Palette White',
+      engine: 'scene palette uniforms u_c0-u_c3 strobe',
+      controls: ['fxRate', 'fxWhiteHitStrength', 'u_c0', 'u_c1', 'u_c2', 'u_c3']
+    }
+  };
+  const FX_RATES = [0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4];
+  function clamp01(v){ v = Number(v); return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : 0; }
+  function setFxDepth(v){
+    const n = Number(v);
+    fxDepth = clamp01(n > 1 ? n / 100 : n);
+    colorHitIntensity = fxDepth;
+  }
+  function nearestFxRate(v){
+    v = Number(v);
+    let best = FX_RATES[1], dist = Math.abs(v - best);
+    for(let i = 0; i < FX_RATES.length; i++){
+      const d = Math.abs(v - FX_RATES[i]);
+      if(d < dist){ best = FX_RATES[i]; dist = d; }
+    }
+    return best;
+  }
+  function setFxRate(v){
+    fxRate = nearestFxRate(v);
+    strobeSpeed = fxRate;
+    colorStrobeRate = fxRate;
+  }
+  function fxRateHz(base, rate){
+    return base / Math.max(0.25, nearestFxRate(rate));
+  }
+  function triggerColorHit(){
+    colorHitHeld = false;
+    colorHitStart = clock;
+    colorHitUntil = clock + COLORHIT_ATTACK + COLORHIT_HOLD + COLORHIT_RELEASE;
+    colorHitHue = nextColorHitHue();
+  }
+  function startColorHitHold(){
+    colorHitHeld = true;
+    colorHitStart = clock;
+    colorHitUntil = 0;
+    colorHitHue = nextColorHitHue();
+  }
+  function triggerWhiteHit(){
+    const hitSpeed = Math.max(0.45, Math.min(2.8, nearestFxRate(fxRate)));
+    whiteHitAttack = 0.014 * hitSpeed;
+    whiteHitHold = 0.050 * hitSpeed;
+    whiteHitRelease = 0.235 * hitSpeed;
+    whiteHitStart = clock;
+    whiteHitUntil = clock + whiteHitAttack + whiteHitHold + whiteHitRelease;
+  }
+  function triggerDropVelocity(){
+    dropVelocityHeld = false;
+    dropReleaseStart = -1e9;
+    dropStart = clock;
+    dropVelocityUntil = clock + DROP_DUR;
+  }
+  function startDropVelocityHold(){
+    dropVelocityHeld = true;
+    dropReleaseStart = -1e9;
+    dropStart = clock;
+    dropVelocityUntil = Infinity;
+  }
+  function releaseDropVelocity(){
+    dropReleaseFrom = Math.max(dropVelocityBoost, 0);
+    dropReleaseStart = clock;
+    if(fxVelocityReleaseSpike) dropSpikeStart = clock;
+    dropVelocityHeld = false;
+    dropVelocityUntil = 0;
+  }
+  function killDropVelocity(){
+    dropVelocityHeld = false;
+    dropReleaseStart = -1e9;
+    dropSpikeStart = -1e9;
+    dropVelocityUntil = 0;
+    dropVelocityBoost = 0;
+  }
+  function runFxReleaseAction(){
+    if(fxReleaseAction === 'color') triggerColorHit();
+    else if(fxReleaseAction === 'white') triggerWhiteHit();
+  }
+  function fxStartSelected(){
+    fxOn = true;
+    switch(fxType){
+      case 'white':
+        strobeActive = true;
+        strobeUntil = clock + STROBE_SAFETY_SEC;
+        break;
+      case 'whiteHitStrobe':
+        whiteHitStrobeEnabled = true;
+        whiteHitStrobeUntil = clock + STROBE_SAFETY_SEC;
+        break;
+      case 'whiteHit':
+        triggerWhiteHit();
+        fxOn = false;
+        break;
+      case 'colorStrobe':
+        colorStrobeEnabled = true;
+        colorStrobeUntil = clock + STROBE_SAFETY_SEC;
+        break;
+      case 'drop':
+        startDropVelocityHold();
+        break;
+      case 'colorHit':
+      default:
+        startColorHitHold();
+        break;
+    }
+  }
+  function fxStopSelected(runRelease = true){
+    const shouldRelease = runRelease && (fxOn || strobeActive || colorStrobeEnabled || whiteHitStrobeEnabled || dropVelocityBoost > 0.02);
+    const shouldEaseDrop = runRelease && (dropVelocityHeld || dropVelocityBoost > 0.02 || clock < dropVelocityUntil);
+    fxOn = false;
+    strobeActive = false;
+    colorStrobeEnabled = false;
+    whiteHitStrobeEnabled = false;
+    colorHitHeld = false;
+    colorHitUntil = 0;
+    colorHitLevel = 0;
+    whiteHitUntil = 0;
+    whiteHitLevel = 0;
+    if(shouldEaseDrop) releaseDropVelocity();
+    else killDropVelocity();
+    if(shouldRelease) runFxReleaseAction();
+  }
+  function fxHitSelected(){
+    switch(fxType){
+      case 'white':
+        strobeActive = true;
+        strobeUntil = clock + 0.75;
+        break;
+      case 'whiteHitStrobe':
+        triggerWhiteHit();
+        break;
+      case 'whiteHit':
+        triggerWhiteHit();
+        break;
+      case 'colorStrobe':
+        colorStrobeEnabled = true;
+        colorStrobeUntil = clock + 0.9;
+        break;
+      case 'drop':
+        triggerDropVelocity();
+        break;
+      case 'colorHit':
+      default:
+        triggerColorHit();
+        break;
+    }
+  }
+
+  const fxStrobeBtn     = document.getElementById('fxStrobeBtn');
+  const fxStrobe1xBtn   = document.getElementById('fxStrobe1xBtn');
+  const fxStrobeHalfBtn = document.getElementById('fxStrobeHalfBtn');
+  const fxDropBtn       = document.getElementById('fxDropBtn');
+  const fxColorHitBtn    = document.getElementById('fxColorHitBtn');
+  const fxColorStrobeBtn = document.getElementById('fxColorStrobeBtn');
+  const fxColorCycleBtn  = document.getElementById('fxColorCycleBtn');
+  const fxColorHalfBtn   = document.getElementById('fxColorHalfBtn');
+  const fxColor1xBtn     = document.getElementById('fxColor1xBtn');
+  const fxColor2xBtn     = document.getElementById('fxColor2xBtn');
+  const fxColorIntensity = document.getElementById('fxColorIntensity');
+
+  function triggerEffect(action, value){
+    switch(action){
+      case 'fx:setType':
+        if(FX_TYPES.includes(value)){
+          if(value !== fxType) fxStopSelected(false);
+          fxType = value;
+        }
+        break;
+      case 'fx:setDepth':
+        setFxDepth(value);
+        break;
+      case 'fx:setRate':
+        setFxRate(value);
+        toast('fx timing · ' + fxRate);
+        break;
+      case 'fx:setLatchMode':
+        fxLatchMode = value === 'hold' ? 'hold' : 'latch';
+        break;
+      case 'fx:setReleaseAction':
+        fxReleaseAction = value === 'color' ? 'color' : (value === 'white' ? 'white' : 'none');
+        break;
+      case 'fx:setVelocityRamp':
+        fxVelocityRamp = Math.max(0.05, Math.min(2.0, Number(value) || DROP_ATTACK));
+        break;
+      case 'fx:setVelocityReleaseSpike':
+        fxVelocityReleaseSpike = !!value;
+        break;
+      case 'fx:setWhiteHitStrength':
+        fxWhiteHitStrength = clamp01(Number(value) > 1 ? Number(value) / 100 : Number(value));
+        break;
+      case 'fx:on':
+        fxStartSelected();
+        break;
+      case 'fx:off':
+        fxStopSelected(true);
+        break;
+      case 'fx:kill':
+        fxStopSelected(false);
+        break;
+      case 'fx:hit':
+        fxHitSelected();
+        toast('fx hit');
+        break;
+      case 'fx:strobe':                       // toggle the white strobe
+        strobeActive = !strobeActive;
+        fxType = 'white';
+        fxOn = strobeActive;
+        if(strobeActive) strobeUntil = clock + STROBE_SAFETY_SEC;
+        toast('white strobe · ' + (strobeActive ? 'on' : 'off'));
+        break;
+      case 'fx:strobeSpeed':                  // 1x / 0.5x
+        setFxRate(value);
+        if(strobeActive) strobeUntil = clock + STROBE_SAFETY_SEC;
+        toast('strobe timing · ' + strobeSpeed);
+        break;
+      case 'fx:drop':                         // momentary velocity boost for a drop
+        triggerDropVelocity();
+        toast('drop velocity · go');
+        break;
+      case 'fx:colorHit':                     // single abrupt colour hit
+        fxType = 'colorHit';
+        triggerColorHit();
+        toast('color hit');
+        break;
+      case 'fx:colorStrobe':                  // toggle rapid colour strobe
+        colorStrobeEnabled = !colorStrobeEnabled;
+        fxType = 'colorStrobe';
+        fxOn = colorStrobeEnabled;
+        if(colorStrobeEnabled) colorStrobeUntil = clock + STROBE_SAFETY_SEC;
+        toast('color strobe · ' + (colorStrobeEnabled ? 'on' : 'off'));
+        break;
+      case 'fx:colorStrobeRate':              // 0.5 / 1 / 2
+        setFxRate(value);
+        if(colorStrobeEnabled) colorStrobeUntil = clock + STROBE_SAFETY_SEC;
+        toast('color strobe timing · ' + colorStrobeRate);
+        break;
+      case 'fx:colorStrobeCycle':             // strobe THROUGH colours (new hue each flash)
+        colorStrobeCycle = !colorStrobeCycle;
+        if(colorStrobeCycle && !colorStrobeEnabled){ colorStrobeEnabled = true; colorStrobeUntil = clock + STROBE_SAFETY_SEC; }
+        toast('colour cycle · ' + (colorStrobeCycle ? 'on' : 'off'));
+        break;
+      case 'fx:colorHitIntensity':            // slider 0..100
+        setFxDepth(value);
+        break;
+    }
+    syncEffectButtons();
+  }
+  function syncEffectButtons(){
+    if(fxStrobeBtn)     fxStrobeBtn.classList.toggle('active', strobeActive);
+    if(fxStrobe1xBtn)   fxStrobe1xBtn.classList.toggle('active', strobeSpeed !== 0.5);
+    if(fxStrobeHalfBtn) fxStrobeHalfBtn.classList.toggle('active', strobeSpeed === 0.5);
+    if(fxDropBtn)       fxDropBtn.classList.toggle('active', dropVelocityBoost > 0.02);
+    if(fxColorHitBtn)    fxColorHitBtn.classList.toggle('active', colorHitLevel > 0.02 && !colorStrobeEnabled);
+    if(fxColorStrobeBtn) fxColorStrobeBtn.classList.toggle('active', colorStrobeEnabled);
+    if(fxColorCycleBtn)  fxColorCycleBtn.classList.toggle('active', colorStrobeCycle);
+    if(fxColorHalfBtn)   fxColorHalfBtn.classList.toggle('active', colorStrobeRate === 0.5);
+    if(fxColor1xBtn)     fxColor1xBtn.classList.toggle('active', colorStrobeRate === 1);
+    if(fxColor2xBtn)     fxColor2xBtn.classList.toggle('active', colorStrobeRate === 2);
+  }
+  if(fxStrobeBtn)     fxStrobeBtn.addEventListener('click', () => triggerEffect('fx:strobe'));
+  if(fxStrobe1xBtn)   fxStrobe1xBtn.addEventListener('click', () => triggerEffect('fx:strobeSpeed', 1));
+  if(fxStrobeHalfBtn) fxStrobeHalfBtn.addEventListener('click', () => triggerEffect('fx:strobeSpeed', 0.5));
+  if(fxDropBtn)       fxDropBtn.addEventListener('click', () => triggerEffect('fx:drop'));
+  if(fxColorHitBtn)    fxColorHitBtn.addEventListener('click', () => triggerEffect('fx:colorHit'));
+  if(fxColorStrobeBtn) fxColorStrobeBtn.addEventListener('click', () => triggerEffect('fx:colorStrobe'));
+  if(fxColorCycleBtn)  fxColorCycleBtn.addEventListener('click', () => triggerEffect('fx:colorStrobeCycle'));
+  if(fxColorHalfBtn)   fxColorHalfBtn.addEventListener('click', () => triggerEffect('fx:colorStrobeRate', 0.5));
+  if(fxColor1xBtn)     fxColor1xBtn.addEventListener('click', () => triggerEffect('fx:colorStrobeRate', 1));
+  if(fxColor2xBtn)     fxColor2xBtn.addEventListener('click', () => triggerEffect('fx:colorStrobeRate', 2));
+  if(fxColorIntensity) fxColorIntensity.addEventListener('input', () => triggerEffect('fx:colorHitIntensity', fxColorIntensity.value));
+  setInterval(syncEffectButtons, 150);   // keep menu buttons in step as strobe auto-offs / drop decays
+  syncEffectButtons();
+
+  /* ============================================================
      RENDER LOOP  (single rAF, delta-timed, never reloads)
      ============================================================ */
   let clock = 0;          // seconds (global visual time, pausable-safe)
@@ -4505,10 +4992,120 @@
       if(fpsShown) fpsEl.textContent = Math.round(fps) + ' fps · ' + Math.round(renderScale*100) + '% res';
     }
 
-    // energy
+    // ---- live performance effects (computed once per frame, applied globally) ----
+    // White strobe: a capped white-glow pulse. Sharp attack + quick decay each cycle
+    // reads as a lighting hit; STROBE_MAX (and the shader) keep it from blinding the room.
+    let flashAmt = 0;
+    if(strobeActive){
+      if(clock >= strobeUntil){ strobeActive = false; if(fxType === 'white') fxOn = false; }   // safety auto-off
+      else {
+        const ph = (clock * fxRateHz(STROBE_HZ, strobeSpeed)) % 1.0;   // beat length: 4 is slow, not 4x fast
+        const pulse = Math.max(0, 1.0 - ph / 0.42);           // bright at cycle start, decays out
+        flashAmt = pulse * pulse * STROBE_MAX * Math.max(0.08, fxDepth);
+      }
+    }
+    // Drop velocity: X-Pad hold ramps up, release eases cleanly back to normal speed.
+    // One-shot DROP still uses the older timed envelope.
+    let dropEnv = 0;
+    const rampAttack = Math.min(Math.max(0.035, fxVelocityRamp), Math.max(0.035, DROP_DUR - 0.1));
+    if(dropVelocityHeld){
+      const tIn = clock - dropStart;
+      if(tIn < rampAttack){
+        const a = Math.max(0, tIn) / rampAttack;
+        dropEnv = a * (2 - a);
+      } else {
+        dropEnv = 1;
+      }
+    }else if(clock < dropVelocityUntil){
+      const tIn = clock - dropStart;
+      if(tIn < rampAttack){
+        const a = Math.max(0, tIn) / rampAttack;
+        dropEnv = a * (2 - a);                               // easeOut — snaps in
+      } else {
+        const rel = dropVelocityUntil - dropStart - rampAttack;
+        const r = rel > 0 ? Math.max(0, Math.min(1, (dropVelocityUntil - clock) / rel)) : 0;
+        dropEnv = r * r * r * (r * (r * 6 - 15) + 10);        // smootherstep — eases back
+      }
+    }else if(dropReleaseStart > 0){
+      const t = Math.max(0, (clock - dropReleaseStart) / DROP_RELEASE);
+      if(t < 1){
+        const r = 1 - (t * t * t * (t * (t * 6 - 15) + 10));
+        dropEnv = dropReleaseFrom * r;
+      }else{
+        dropReleaseStart = -1e9;
+        dropReleaseFrom = 0;
+      }
+    }
+    if(dropSpikeStart > 0){
+      const s = Math.max(0, (clock - dropSpikeStart) / DROP_SPIKE_DUR);
+      if(s < 1){
+        const spike = 1 - (s * s * (3 - 2 * s));
+        dropEnv = Math.max(dropEnv, 1 + spike * DROP_SPIKE_STRENGTH);
+      }else{
+        dropSpikeStart = -1e9;
+      }
+    }
+    dropVelocityBoost = dropEnv;
+
+    // Color hit: abrupt hue shift of the final image. Single tap = attack/hold/release envelope;
+    // Color strobe = rapid alternate (square pulse). Both drive the same u_colorHit blend level.
+    let hitLevel = 0;
+    if(colorHitHeld){
+      const t = Math.max(0, clock - colorHitStart);
+      hitLevel = Math.min(1, t / COLORHIT_ATTACK);
+    }else if(clock < colorHitUntil){
+      const t = clock - colorHitStart;
+      if(t < COLORHIT_ATTACK){ hitLevel = t / COLORHIT_ATTACK; }                 // snap in (~20ms)
+      else if(t < COLORHIT_ATTACK + COLORHIT_HOLD){ hitLevel = 1; }              // hold (~120ms)
+      else {
+        const r = 1 - (t - COLORHIT_ATTACK - COLORHIT_HOLD) / COLORHIT_RELEASE;  // ease out
+        const c = Math.max(0, Math.min(1, r));
+        hitLevel = c * c * c * (c * (c * 6 - 15) + 10);                          // smootherstep
+      }
+    }
+    if(colorStrobeEnabled){
+      if(clock >= colorStrobeUntil){ colorStrobeEnabled = false; if(fxType === 'colorStrobe') fxOn = false; }               // safety auto-off
+      else {
+        const rate = fxRateHz(COLOR_STROBE_HZ, colorStrobeRate);
+        const cyc = Math.floor(clock * rate);
+        if(colorStrobeCycle && cyc !== lastColorStrobeCyc){ colorHitHue = nextColorHitHue(); }  // new colour each flash
+        lastColorStrobeCyc = cyc;
+        const ph = (clock * rate) % 1.0;
+        // shaped square: full hit for the first ~45% of each cycle, quick soft edges (cheap, not jittery)
+        const pulse = ph < 0.45 ? Math.min(1, ph / 0.05) * Math.min(1, (0.45 - ph) / 0.05) : 0;
+        hitLevel = Math.max(hitLevel, pulse);
+      }
+    }
+    colorHitLevel = hitLevel;
+
+    let whiteLevel = 0;
+    if(clock < whiteHitUntil){
+      const t = clock - whiteHitStart;
+      if(t < whiteHitAttack){ whiteLevel = t / whiteHitAttack; }
+      else if(t < whiteHitAttack + whiteHitHold){ whiteLevel = 1; }
+      else {
+        const r = 1 - (t - whiteHitAttack - whiteHitHold) / whiteHitRelease;
+        const c = Math.max(0, Math.min(1, r));
+        whiteLevel = c * c * c * (c * (c * 6 - 15) + 10);
+      }
+    }
+    if(whiteHitStrobeEnabled){
+      if(clock >= whiteHitStrobeUntil){ whiteHitStrobeEnabled = false; if(fxType === 'whiteHitStrobe') fxOn = false; }
+      else {
+        const rate = fxRateHz(COLOR_STROBE_HZ, fxRate);
+        const ph = (clock * rate) % 1.0;
+        const pulse = ph < 0.38 ? Math.min(1, ph / 0.035) * Math.min(1, (0.38 - ph) / 0.06) : 0;
+        whiteLevel = Math.max(whiteLevel, pulse);
+      }
+    }
+    whiteHitLevel = whiteLevel;
+    const whitePaletteHit = Math.max(0, Math.min(1, whiteHitLevel * fxWhiteHitStrength));
+
+    // energy (drop lifts intensity a touch so bloom/CA swell into the boost)
     const target = micEnergyTarget(clock);
     energySmooth += (target - energySmooth) * Math.min(1, dt*(micReactive ? 2.8 : 1.2));
-    const E = energySmooth;
+    const fxDropDepth = Math.max(0.25, fxDepth);
+    const E = Math.min(1, energySmooth + dropEnv * 0.28 * fxDropDepth);
 
     // ease post-processing params toward the active look (smooth style switches)
     const pk = Math.min(1, dt*4.0);
@@ -4539,7 +5136,7 @@
       const velocityWindow = rampIn * body * settleOut;
       transitionVelocityBoost = 1.0 + velocityWindow * 2.0;
     }
-    sceneClock += dt * post.speed * transitionVelocityBoost;
+    sceneClock += dt * post.speed * transitionVelocityBoost * (1.0 + dropEnv * DROP_STRENGTH * fxDropDepth);
     if(perfSample){
       perfSample.logic = performance.now() - phaseStart;
       phaseStart = performance.now();
@@ -4611,10 +5208,31 @@
     gl.uniform1f(sceneProg.u('u_blend'), blendEased);
     gl.uniform1f(sceneProg.u('u_speed'), 1.0);
     gl.uniform1f(sceneProg.u('u_sceneFlow'), sceneFlowEnabled ? 1.0 : 0.0);
-    gl.uniform3fv(sceneProg.u('u_c0'), cur.c0);
-    gl.uniform3fv(sceneProg.u('u_c1'), cur.c1);
-    gl.uniform3fv(sceneProg.u('u_c2'), cur.c2);
-    gl.uniform3fv(sceneProg.u('u_c3'), cur.c3);
+    const hitWhite = [1, 1, 1];
+    const sceneC0 = whitePaletteHit > 0.001 ? [
+      cur.c0[0] + (hitWhite[0] - cur.c0[0]) * whitePaletteHit,
+      cur.c0[1] + (hitWhite[1] - cur.c0[1]) * whitePaletteHit,
+      cur.c0[2] + (hitWhite[2] - cur.c0[2]) * whitePaletteHit
+    ] : cur.c0;
+    const sceneC1 = whitePaletteHit > 0.001 ? [
+      cur.c1[0] + (hitWhite[0] - cur.c1[0]) * whitePaletteHit,
+      cur.c1[1] + (hitWhite[1] - cur.c1[1]) * whitePaletteHit,
+      cur.c1[2] + (hitWhite[2] - cur.c1[2]) * whitePaletteHit
+    ] : cur.c1;
+    const sceneC2 = whitePaletteHit > 0.001 ? [
+      cur.c2[0] + (hitWhite[0] - cur.c2[0]) * whitePaletteHit,
+      cur.c2[1] + (hitWhite[1] - cur.c2[1]) * whitePaletteHit,
+      cur.c2[2] + (hitWhite[2] - cur.c2[2]) * whitePaletteHit
+    ] : cur.c2;
+    const sceneC3 = whitePaletteHit > 0.001 ? [
+      cur.c3[0] + (hitWhite[0] - cur.c3[0]) * whitePaletteHit,
+      cur.c3[1] + (hitWhite[1] - cur.c3[1]) * whitePaletteHit,
+      cur.c3[2] + (hitWhite[2] - cur.c3[2]) * whitePaletteHit
+    ] : cur.c3;
+    gl.uniform3fv(sceneProg.u('u_c0'), sceneC0);
+    gl.uniform3fv(sceneProg.u('u_c1'), sceneC1);
+    gl.uniform3fv(sceneProg.u('u_c2'), sceneC2);
+    gl.uniform3fv(sceneProg.u('u_c3'), sceneC3);
     drawFull(sceneProg);
     if(perfSample){
       perfSample.scenePass = performance.now() - phaseStart;
@@ -4679,6 +5297,11 @@
     gl.uniform1f(compProg.u('u_ca'), post.ca);
     gl.uniform1f(compProg.u('u_vig'), post.vig);
     gl.uniform1f(compProg.u('u_strobe'), post.strobe);
+    gl.uniform1f(compProg.u('u_flash'), flashAmt);
+    gl.uniform1f(compProg.u('u_colorHit'), colorHitLevel);
+    gl.uniform1f(compProg.u('u_colorHitHue'), colorHitHue);
+    gl.uniform1f(compProg.u('u_colorHitMode'), colorHitMode);
+    gl.uniform1f(compProg.u('u_colorHitIntensity'), colorHitIntensity);
     gl.uniform1f(compProg.u('u_micReactive'), micReactive ? 1.0 : 0.0);
     if(compProg.u('u_logoMaskRes')) gl.uniform2f(compProg.u('u_logoMaskRes'), logoMaskCanvas.width || 1, logoMaskCanvas.height || 1);
     drawFull(compProg);
@@ -4691,6 +5314,150 @@
     requestAnimationFrame(render);
   }
   window.addEventListener('beforeunload', stopMicReactive);
+
+  /* ============================================================
+     PHONE REMOTE BRIDGE
+     Connects to the local server's message bus (server.js) so a phone
+     on the same Wi-Fi can drive the visuals. It only reuses the exact
+     functions the keyboard + on-screen UI already call — no logic is
+     duplicated, so keyboard shortcuts and the local menu are untouched.
+     Inert on file:// (no server) — the engine still runs standalone.
+     ============================================================ */
+  (function remoteBridge(){
+    if(!/^https?:$/.test(location.protocol)) return;   // needs server.js; harmless otherwise
+
+    function busPost(obj){
+      try {
+        fetch('/bus', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(obj)
+        }).catch(()=>{});
+      } catch(_){}
+    }
+
+    // send a specific colorway to screen exactly like the palette grid does
+    function remoteSelectPalette(idx){
+      if(rainbowMode){
+        rainbowMode = false;
+        if(rainbowToggle){ rainbowToggle.classList.remove('active'); rainbowToggle.textContent = 'Off'; }
+      }
+      startPaletteTween(idx);
+      nextPalAt = clock + PAL_DWELL;
+      renderPaletteGrid();
+    }
+
+    function buildStatus(){
+      const si = getCurrentSceneIndex();
+      const sceneMeta = SCENE_META[si] || { advancedGroup:'untagged', controlDrivers:[] };
+      return {
+        type:'status',
+        scene: si,
+        sceneName: SCENE_NAMES[si],
+        sceneGroup: sceneMeta.advancedGroup,
+        sceneDrivers: sceneMeta.controlDrivers,
+        color: palToIdx,
+        colorName: rainbowMode ? 'rainbow' : (PALETTES[palToIdx] ? PALETTES[palToIdx].name : ''),
+        rainbow: rainbowMode,
+        logo: logoMode,                 // 'krl' | 'woods' | 'outro'
+        krlLock: krlLockEnabled,
+        woodsLock: woodsLockEnabled,
+        sceneLock: sceneLocked,
+        mic: micReactive,
+        uiShown: !uiHidden,
+        goodbye: outroEnabled,
+        strobe: strobeActive,
+        strobeSpeed: strobeSpeed,
+        drop: dropVelocityBoost > 0.02,
+        colorHit: colorHitLevel > 0.02 || colorHitHeld,
+        colorStrobe: colorStrobeEnabled,
+        colorStrobeCycle: colorStrobeCycle,
+        colorStrobeRate: colorStrobeRate,
+        whiteHit: whiteHitLevel > 0.02,
+        whiteHitStrobe: whiteHitStrobeEnabled,
+        colorHitIntensity: Math.round(colorHitIntensity * 100),
+        fxType: fxType,
+        fxGroup: FX_META[fxType] ? FX_META[fxType].group : '',
+        fxGroupLabel: FX_META[fxType] ? FX_META[fxType].label : '',
+        fxEngine: FX_META[fxType] ? FX_META[fxType].engine : '',
+        fxControls: FX_META[fxType] ? FX_META[fxType].controls : [],
+        fxMeta: FX_META,
+        fxDepth: Math.round(fxDepth * 100),
+        fxRate: fxRate,
+        fxOn: fxOn,
+        fxLatchMode: fxLatchMode,
+        fxReleaseAction: fxReleaseAction,
+        fxVelocityReleaseSpike: fxVelocityReleaseSpike,
+        fxVelocityRamp: fxVelocityRamp,
+        fxWhiteHitStrength: Math.round(fxWhiteHitStrength * 100),
+        look: LOOKS[currentLook] ? LOOKS[currentLook].name : '',
+        fps: Math.round(fps),
+        res: Math.round(renderScale * 100),
+        scenes: SCENE_NAMES,
+        sceneGroups: SCENE_GROUPS,
+        sceneMeta: SCENE_META,
+        colors: PALETTES.map(p => p.name)
+      };
+    }
+    function pushStatus(){ busPost(buildStatus()); }
+
+    function handleCommand(action, value){
+      switch(action){
+        case 'scene:next':  nextScene(); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
+        case 'scene:prev':  gotoScene((getCurrentSceneIndex() - 1 + SCENE_NAMES.length) % SCENE_NAMES.length); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
+        case 'scene:goto':  gotoScene(((value % SCENE_NAMES.length) + SCENE_NAMES.length) % SCENE_NAMES.length); nextSceneAt = sceneLocked ? Infinity : clock + SCENE_DWELL; break;
+        case 'scene:lock':  sceneLockToggle && sceneLockToggle.click(); break;
+        case 'color:next':  remoteSelectPalette((palToIdx + 1) % PALETTES.length); break;
+        case 'color:prev':  remoteSelectPalette((palToIdx - 1 + PALETTES.length) % PALETTES.length); break;
+        case 'color:goto':  remoteSelectPalette(((value % PALETTES.length) + PALETTES.length) % PALETTES.length); break;
+        case 'logo:krl':    krlLockToggle && krlLockToggle.click(); break;
+        case 'logo:woods':  woodsLockToggle && woodsLockToggle.click(); break;
+        case 'logo:flip':   flipLogo(); break;
+        case 'mic:toggle':  toggleMicReactive(); break;
+        case 'ui:toggle':   setUiHidden(!uiHidden); if(!uiHidden) toast('ui · on'); break;
+        case 'goodbye:toggle': outroToggle && outroToggle.click(); break;
+        case 'fx:setType':
+        case 'fx:setDepth':
+        case 'fx:setRate':
+        case 'fx:on':
+        case 'fx:off':
+        case 'fx:kill':
+        case 'fx:hit':
+        case 'fx:setLatchMode':
+        case 'fx:setReleaseAction':
+        case 'fx:setVelocityRamp':
+        case 'fx:setVelocityReleaseSpike':
+        case 'fx:setWhiteHitStrength':
+        case 'fx:strobe':
+        case 'fx:strobeSpeed':
+        case 'fx:drop':
+        case 'fx:colorHit':
+        case 'fx:colorStrobe':
+        case 'fx:colorStrobeCycle':
+        case 'fx:colorStrobeRate':
+        case 'fx:colorHitIntensity': triggerEffect(action, value); break;   // shared with the on-screen menu
+      }
+      pushStatus();   // reflect the new state on the phone right away
+    }
+
+    function connect(){
+      let es;
+      try { es = new EventSource('/bus'); } catch(_){ return; }
+      es.onmessage = (ev) => {
+        let msg; try { msg = JSON.parse(ev.data); } catch(_){ return; }
+        if(!msg) return;
+        if(msg.type === 'cmd')   handleCommand(msg.action, msg.value);
+        else if(msg.type === 'hello') pushStatus();
+        // 'status' frames are our own echoes — ignore
+      };
+      es.onopen = () => pushStatus();
+      es.onerror = () => { /* EventSource auto-reconnects */ };
+    }
+
+    connect();
+    setInterval(pushStatus, 1000);   // keep the phone's status card live (fps/res/scene drift)
+  })();
+
   requestAnimationFrame(render);
 })();
 </script>

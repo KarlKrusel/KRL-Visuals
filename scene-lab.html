@@ -1,0 +1,1846 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>KRL // Scene Lab</title>
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; height:100%; background:#04070f; color:#fff;
+    font-family: ui-monospace,"SF Mono",Menlo,Consolas,monospace; overflow:hidden; }
+  #gl{ position:fixed; inset:0; width:100%; height:100%; display:block; z-index:0; background:#000; }
+  #labToggle{ position:fixed; right:2vw; top:2.4vh; z-index:8;
+    border:1px solid rgba(255,255,255,0.22); border-radius:7px;
+    background:rgba(3,8,18,0.72); color:#fff; padding:10px 15px;
+    font-size:12px; font-weight:800; letter-spacing:0.10em; text-transform:uppercase; cursor:pointer; }
+  #labToggle:hover{ background:rgba(20,32,60,0.86); }
+  #lab{ position:fixed; right:0; top:0; height:100%; width:min(420px,96vw); z-index:7;
+    background:rgba(3,7,16,0.90); border-left:1px solid rgba(255,255,255,0.12);
+    backdrop-filter:blur(3px); display:flex; flex-direction:column;
+    transform:translateX(100%); transition:transform .22s ease; }
+  #lab.open{ transform:translateX(0); }
+  #labHead{ padding:16px 16px 10px; border-bottom:1px solid rgba(255,255,255,0.08); }
+  #labTitle{ font-family:"Arial Black",Helvetica,Arial,sans-serif; font-size:22px; letter-spacing:0.02em; }
+  #labSub{ margin-top:4px; font-size:10.5px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(255,255,255,0.5); }
+  #labBody{ overflow-y:auto; padding:12px 16px 40px; flex:1; }
+  .labField{ margin-bottom:11px; }
+  .labField > label{ display:block; font-size:10px; letter-spacing:0.07em; text-transform:uppercase;
+    color:rgba(255,255,255,0.55); margin-bottom:5px; }
+  .labSelect, .labText{ width:100%; border:1px solid rgba(255,255,255,0.16); border-radius:6px;
+    background:rgba(255,255,255,0.07); color:#fff; padding:8px 9px; font:inherit; font-size:12px; }
+  .labBtnRow{ display:flex; flex-wrap:wrap; gap:7px; margin:6px 0 4px; }
+  .labBtn{ border:1px solid rgba(255,255,255,0.16); border-radius:6px; background:rgba(255,255,255,0.08);
+    color:#fff; padding:7px 10px; font:inherit; font-size:10.5px; font-weight:700;
+    letter-spacing:0.04em; text-transform:uppercase; cursor:pointer; flex:1 1 auto; }
+  .labBtn:hover{ background:rgba(255,255,255,0.16); }
+  .labBtn.primary{ background:rgba(70,120,255,0.30); border-color:rgba(120,160,255,0.5); }
+  .labBtn.warn{ background:rgba(255,90,90,0.18); border-color:rgba(255,120,120,0.4); }
+  .labToggleBtn{ border:1px solid rgba(255,255,255,0.16); border-radius:6px; background:rgba(255,255,255,0.06);
+    color:rgba(255,255,255,0.8); padding:7px 12px; font:inherit; font-size:11px; font-weight:800;
+    letter-spacing:0.05em; text-transform:uppercase; cursor:pointer; }
+  .labToggleBtn.on{ background:rgba(90,220,140,0.26); border-color:rgba(120,240,170,0.5); color:#fff; }
+  .catGroup{ border:1px solid rgba(255,255,255,0.08); border-radius:8px; margin:10px 0; overflow:hidden;
+    background:rgba(255,255,255,0.02); }
+  .catHead{ display:flex; justify-content:space-between; align-items:center; cursor:pointer;
+    padding:10px 12px; font-size:11px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; }
+  .catHead .caret{ transition:transform .18s; opacity:0.7; }
+  .catGroup.collapsed .caret{ transform:rotate(-90deg); }
+  .catGroup.collapsed .catBody{ display:none; }
+  .catBody{ padding:6px 12px 12px; }
+  .ctrl{ display:grid; grid-template-columns:1fr; gap:4px; margin-bottom:9px; }
+  .ctrlTop{ display:flex; justify-content:space-between; align-items:baseline; }
+  .ctrlName{ font-size:11.5px; color:rgba(255,255,255,0.85); }
+  .ctrlVal{ font-size:11px; font-weight:700; color:#fff; min-width:44px; text-align:right; }
+  .ctrl input[type=range]{ -webkit-appearance:none; appearance:none; width:100%; height:4px;
+    border-radius:999px; background:rgba(255,255,255,0.18); outline:none; cursor:pointer; }
+  .ctrl input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:15px; height:15px;
+    border-radius:50%; background:#fff; cursor:pointer; }
+  .ctrl input[type=range]::-moz-range-thumb{ width:15px; height:15px; border:none; border-radius:50%; background:#fff; }
+  .ctrl.modified .ctrlName::after{ content:" *"; color:#7fd0ff; }
+  .noParams{ font-size:11px; color:rgba(255,255,255,0.45); padding:4px 0 8px; }
+  .labNote{ font-size:11px; line-height:1.5; color:rgba(255,255,255,0.62); }
+  .labNote code{ background:rgba(255,255,255,0.09); padding:1px 4px; border-radius:3px; color:#9fd0ff; }
+  details.helpBox{ margin-top:16px; border-top:1px solid rgba(255,255,255,0.08); padding-top:12px; }
+  details.helpBox summary{ cursor:pointer; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:rgba(255,255,255,0.7); }
+  #labFlash{ position:fixed; left:50%; bottom:5vh; transform:translateX(-50%); z-index:9;
+    background:rgba(10,16,30,0.92); border:1px solid rgba(255,255,255,0.18); border-radius:8px;
+    padding:9px 16px; font-size:12px; letter-spacing:0.03em; opacity:0; transition:opacity .2s; pointer-events:none; }
+  #labFlash.show{ opacity:1; }
+  #fatal{ position:fixed; inset:0; z-index:20; display:none; place-items:center; text-align:center;
+    padding:8vw; font-size:14px; color:#fff; background:#04070f; }
+</style>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <button id="labToggle" type="button">Scene Lab</button>
+  <div id="lab">
+    <div id="labHead">
+      <div id="labTitle">Scene Lab</div>
+      <div id="labSub">Deep visual maker &middot; standalone</div>
+    </div>
+    <div id="labBody"></div>
+  </div>
+  <div id="labFlash"></div>
+  <div id="fatal">This visual engine needs WebGL. Enable it in your browser or try a newer one.</div>
+<script>
+"use strict";
+(function(){
+  const cvs = document.getElementById('gl');
+  const fatal = document.getElementById('fatal');
+  const GL_CONTEXT_OPTS = { antialias:false, alpha:false, depth:false, stencil:false, powerPreference:'high-performance' };
+  const gl = cvs.getContext('webgl2', GL_CONTEXT_OPTS)
+    || cvs.getContext('webgl', GL_CONTEXT_OPTS)
+    || cvs.getContext('experimental-webgl', GL_CONTEXT_OPTS);
+  const isWebGL2 = !!(gl && typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext);
+  if(!gl){ fatal.style.display='grid'; return; }
+
+const VERT_WEBGL2 = `#version 300 es
+  const vec2 verts[3] = vec2[](vec2(-1.0,-1.0), vec2(3.0,-1.0), vec2(-1.0,3.0));
+  out vec2 v_uv;
+  void main(){
+    vec2 p = verts[gl_VertexID];
+    v_uv = p * 0.5 + 0.5;
+    gl_Position = vec4(p, 0.0, 1.0);
+  }`;
+  const VERT_WEBGL1 = `
+  attribute vec2 a_pos;
+  varying vec2 v_uv;
+  void main(){
+    vec2 p = a_pos;
+    v_uv = p * 0.5 + 0.5;
+    gl_Position = vec4(p, 0.0, 1.0);
+  }`;
+  const VERT = isWebGL2 ? VERT_WEBGL2 : VERT_WEBGL1;
+const SCENE_FRAG = `#version 300 es
+  precision highp float;
+  in vec2 v_uv;
+  out vec4 fragColor;
+  uniform vec2  u_res;
+  uniform float u_time;
+  uniform float u_energy;
+  uniform int   u_sceneA;
+  uniform int   u_sceneB;
+  uniform float u_blend;
+  uniform float u_speed;                  // per-look motion speed
+  uniform float u_sceneFlow;
+  uniform vec3  u_c0, u_c1, u_c2, u_c3;   // 4-stop colorway gradient with a full multicolor loop
+  uniform vec4  u_sceneParamsA;           // Scene Lab: packed deep params (x,y,z,w)
+  uniform vec4  u_sceneParamsB;           // Scene Lab: packed deep params
+  uniform vec4  u_sceneParamsC;           // Scene Lab: packed deep params (reserved)
+  uniform float u_hueOffset;              // Scene Lab: global hue rotation (0 = default)
+  uniform float u_colorCycle;             // Scene Lab: global colour cycle speed (0 = default)
+
+  float hash21(vec2 p){ p = fract(p*vec2(123.34,345.45)); p += dot(p, p+34.345); return fract(p.x*p.y); }
+  float noise(vec2 p){
+    vec2 i=floor(p), f=fract(p);
+    float a=hash21(i), b=hash21(i+vec2(1.0,0.0)), c=hash21(i+vec2(0.0,1.0)), d=hash21(i+vec2(1.0,1.0));
+    vec2 u=f*f*(3.0-2.0*f);
+    return mix(mix(a,b,u.x), mix(c,d,u.x), u.y);
+  }
+  float fbm(vec2 p){ float v=0.0,a=0.5; for(int i=0;i<4;i++){ v+=a*noise(p); p*=2.02; a*=0.5; } return v; }
+  // 4-stop looping gradient so every scene can travel through multiple colors cleanly
+  vec3 palette(float t){
+    float q = fract(t + u_hueOffset + u_time*u_colorCycle) * 4.0;
+    if(q < 1.0) return mix(u_c0, u_c1, q);
+    if(q < 2.0) return mix(u_c1, u_c2, q - 1.0);
+    if(q < 3.0) return mix(u_c2, u_c3, q - 2.0);
+    return mix(u_c3, u_c0, q - 3.0);
+  }
+  vec3 neonGrade(vec3 col){
+    float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+    vec3 sat = mix(vec3(l), col, 1.62);
+    sat *= vec3(1.06, 1.02, 1.10);   // slight cyan/magenta bias for a stronger neon read
+    return max(sat * 1.18 - 0.004, 0.0);
+  }
+
+  vec3 sceneTunnel(vec2 uv, float t){
+    vec2 p = uv;
+    float a = atan(p.y, p.x);
+    float r = length(p) + 1e-3;
+    float depth = 0.34/r + t*0.84;
+    float spin = a + t*0.18 + 0.12*sin(t*0.34);
+
+    float kaleido = abs(fract((spin / 6.28318) * 8.0 + 0.5) - 0.5) * 2.0;
+    float petals = 1.0 - smoothstep(0.18, 0.82, kaleido);
+    float orb = 0.5 + 0.5*sin(depth*8.8 - t*0.8 + petals*2.2);
+    float ringA = smoothstep(0.18, 0.0, abs(fract(depth*0.82 + petals*0.18) - 0.5));
+    float ringB = smoothstep(0.11, 0.0, abs(fract(depth*1.30 - petals*0.16 - t*0.06) - 0.5));
+    float iris = pow(max(0.0, cos(spin*6.0 + depth*0.22)), 8.0) * (0.34 + 0.66*orb);
+    float star = pow(max(0.0, cos(spin*12.0 - depth*0.10)), 18.0) * smoothstep(1.18, 0.06, r);
+    float core = smoothstep(0.20, 0.0, r);
+    float halo = smoothstep(1.04, 0.10, r) * (0.28 + 0.72*ringA);
+
+    vec3 col = palette(depth*0.050 + orb*0.18) * (0.16 + 0.12*orb);
+    col += palette(0.18 + depth*0.034 + petals*0.08) * ringA * 0.26;
+    col += palette(0.42 + depth*0.028 - orb*0.08) * ringB * 0.24;
+    col += palette(0.66 + petals*0.12 + orb*0.06) * iris * 0.30;
+    col += palette(0.86 + depth*0.020) * star * 0.18;
+    col += palette(0.98) * core * (0.18 + 0.16*orb);
+    col += palette(0.54 + orb*0.08) * halo * 0.14;
+    col *= smoothstep(0.02, 0.72, r);
+    return col;
+  }
+  vec3 sceneTunnelV2(vec2 uv, float t){
+    float spd=u_sceneParamsA.x, twk=u_sceneParamsA.y, rden=u_sceneParamsA.z, spk=u_sceneParamsA.w;
+    float glow=u_sceneParamsB.x, corb=u_sceneParamsB.y, zoom=u_sceneParamsB.z, aud=u_sceneParamsB.w;
+    float tt = t*spd;
+    vec2 p = uv / max(zoom, 0.05);
+    float r = length(p) + 1e-3;
+    float a = atan(p.y, p.x);
+
+    float spin = tt*1.15 + 0.55*sin(tt*0.42);
+    float twist = spin + twk*(1.35/r) + twk*0.26*sin(r*14.0 - tt*2.0);
+    float rotA = a + twist;
+    float rotB = a - twist*0.62;
+    float depth = 0.30/r + tt*1.05;
+
+    float ringA = smoothstep(0.18, 0.0, abs(sin(depth*2.26*rden - rotA)));
+    float ringB = smoothstep(0.12, 0.0, abs(sin(depth*3.46*rden + rotB)));
+    float ringC = smoothstep(0.08, 0.0, abs(fract(depth*1.78*rden - tt*0.14) - 0.5));
+
+    float spokesA = pow(max(0.0, cos(rotA*8.0*spk + depth*0.62)), 10.0);
+    float spokesB = pow(max(0.0, cos(rotB*12.0*spk - depth*0.28)), 14.0);
+    float lane = max(spokesA*0.82, spokesB);
+
+    float swirl = 0.5 + 0.5*sin(depth*0.55 + a*5.0 - tt*1.2);
+    float diamonds = smoothstep(0.16, 0.0, abs(sin((rotA + rotB)*2.0 + depth*1.12) * cos((rotA - rotB)*1.24 - depth*0.46)));
+    float flare = pow(max(0.0, cos(rotA*3.0 - tt*1.7)), 22.0) * smoothstep(1.26, 0.04, r);
+    float core = smoothstep(0.18, 0.0, r);
+    float edgeSweep = pow(max(0.0, sin(r*18.0 - tt*4.2 + a*4.0)), 12.0) * smoothstep(1.24, 0.16, r);
+
+    vec3 col = palette(depth*0.045 + swirl*0.24) * (0.12 + 0.10*swirl);
+    col += palette(0.18 + depth*0.032 + swirl*0.10) * ringA * 0.28;
+    col += palette(0.36 + depth*0.041 - swirl*0.08) * ringB * 0.26;
+    col += palette(0.54 + depth*0.050) * ringC * 0.24;
+    col += palette(0.72 + swirl*0.10) * lane * 0.36;
+    col += palette(0.86 + depth*0.024) * diamonds * lane * 0.24;
+    col += palette(0.96) * flare * 0.34;
+    col += palette(0.98) * core * (0.18 + 0.18*swirl) * corb;
+    col += palette(0.62 + swirl*0.08) * edgeSweep * 0.16;
+    col *= smoothstep(0.02, 0.98, r);
+    col *= glow * (1.0 + aud*0.7*u_energy);
+    return col;
+  }
+  vec3 sceneKaleido(vec2 uv, float t){
+    float a = atan(uv.y, uv.x);
+    float r = length(uv);
+    float seg = 8.0;
+    float aa = mod(a, 6.28318/seg);
+    aa = abs(aa - 3.14159/seg);
+    vec2 p = vec2(cos(aa), sin(aa)) * r;
+    float n = fbm(p*3.2 + vec2(t*0.28, -t*0.22));
+    n += 0.5*fbm(p*6.6 - t*0.16);
+    vec3 col = palette(n*0.55 + r*0.3 - t*0.03);
+    col *= 0.42 + 0.62*n;
+    return col;
+  }
+  vec3 scenePlasma(vec2 uv, float t){
+    float spd=u_sceneParamsA.x, scl=u_sceneParamsA.y, warp=u_sceneParamsA.z, fden=u_sceneParamsA.w;
+    float glow=u_sceneParamsB.x, pth=u_sceneParamsB.y, corb=u_sceneParamsB.z, aud=u_sceneParamsB.w;
+    float tt=t*spd;
+    vec2 p = uv*1.5*scl;
+    vec2 q = vec2(fbm(p + vec2(1.7,9.2) + 0.14*tt), fbm(p + vec2(8.3,2.8) - 0.12*tt));
+    vec2 r = vec2(fbm(p + 3.0*warp*q + vec2(1.7,9.2) + 0.17*tt),
+                  fbm(p + 3.0*warp*q + vec2(8.3,2.8) + 0.13*tt));
+    float w = fbm(p + 3.5*warp*r + 0.07*tt);
+    float pocket = smoothstep(0.44*pth, 0.78*pth, w + 0.10*length(r));
+    float filaments = smoothstep(0.10, 0.0, abs(fract((w + q.x*0.34 - q.y*0.28) * 3.2*fden) - 0.5));
+    float core = smoothstep(0.70, 0.94, w);
+    vec3 col = palette(0.9*w + 0.12*length(r) + 0.05*sin(tt*0.15)) * (0.06 + 0.18*w);
+    col += palette(0.24 + w*0.32 + q.x*0.08) * pocket * 0.28;
+    col += palette(0.52 + q.y*0.12 + w*0.18) * filaments * pocket * 0.22;
+    col += palette(w + 0.3) * 0.18 * core * corb;
+    col *= glow * (1.0 + aud*0.7*u_energy);
+    return col;
+  }
+  vec3 sceneGrid(vec2 uv, float t){
+    // synthwave sunset grid: banded neon sun, glowing horizon, crisp scrolling floor
+    vec3 col = vec3(0.0);
+    const float hY = 0.0;                                   // horizon line height
+    // sky — soft vertical neon gradient with a touch of drifting haze
+    float sky = clamp(uv.y / 0.9, 0.0, 1.0);
+    col += mix(palette(0.58), palette(0.84), sky) * (0.05 + 0.11*sky);
+    float haze = fbm(vec2(uv.x*1.6 + t*0.05, uv.y*2.0 - t*0.02));
+    col += palette(0.50 + haze*0.2) * smoothstep(hY, 0.8, uv.y) * haze * 0.05;
+    // banded neon sun sitting on the horizon
+    vec2 s = (uv - vec2(0.0, 0.30)) * vec2(1.0, 1.16);
+    float sd = length(s);
+    float sun = smoothstep(0.30, 0.27, sd);
+    float cuts = smoothstep(-0.25, 0.65, sin((uv.y - 0.16)*26.0) + (uv.y - 0.18)*7.0);
+    sun *= clamp(cuts, 0.0, 1.0);                           // horizontal slits, thinning upward
+    col += mix(palette(0.97), palette(0.62), smoothstep(0.0, 0.5, uv.y)) * sun * 0.95;
+    col += palette(0.90) * smoothstep(0.7, 0.0, sd) * 0.14; // sun halo
+    // glowing horizon line
+    col += palette(0.93) * smoothstep(0.03, 0.0, abs(uv.y - hY)) * 0.55;
+    // perspective neon floor
+    if(uv.y < hY){
+      float z = 0.34 / (hY - uv.y + 0.0025);
+      float x = uv.x * z;
+      float fade = exp(-z * 0.14);
+      float w = 0.06 + z*0.004;
+      float gx = smoothstep(w, 0.0, abs(fract(x*0.5) - 0.5));
+      float gz = smoothstep(w, 0.0, abs(fract(z*0.5 - t*1.1) - 0.5));
+      float grid = max(gx, gz);
+      vec3 gc = palette(0.10 + 0.06*sin(t*0.2) + abs(x)*0.01);
+      col += gc * grid * fade * 1.15;
+      col += palette(0.42) * fade * 0.04;                  // floor ambient wash
+    }
+    return col;
+  }
+  vec3 sceneBars(vec2 uv, float t){
+    vec2 p = uv;
+    float haze = fbm(vec2(p.x*1.6 + t*0.08, p.y*2.2 - t*0.06));
+    float base = 0.08 + haze*0.06;
+
+    // Repeating rectangular gates moving toward the viewer.
+    float q = max(0.055, 0.98 - p.y);
+    float depth = 0.28 / q;
+    float z = depth + t*1.22;
+    float travel = fract(z);
+    float near = pow(1.0 - travel, 2.1);
+
+    float gateHalfW = mix(0.16, 1.05, near);
+    float gateHalfH = mix(0.08, 0.88, near);
+    float thick = mix(0.010, 0.080, near);
+
+    float gapW = mix(0.12, 0.34, near);
+    float leftFrame = smoothstep(thick, 0.0, abs(abs(p.x + gapW) - gateHalfW)) * smoothstep(gateHalfH, 0.0, abs(p.y));
+    float rightFrame = smoothstep(thick, 0.0, abs(abs(p.x - gapW) - gateHalfW)) * smoothstep(gateHalfH, 0.0, abs(p.y));
+    float topFrame = smoothstep(thick, 0.0, abs(abs(p.y) - gateHalfH)) * smoothstep(gateHalfW + gapW, gapW, abs(p.x));
+    float gate = max(max(leftFrame, rightFrame), topFrame);
+
+    // Stack additional inner shutter bars inside the gate for more motion.
+    float shutterY = abs(fract((p.y + near*0.22) * mix(4.0, 14.0, near) - t*0.36) - 0.5);
+    float shutter = smoothstep(0.10, 0.0, shutterY) * smoothstep(gateHalfW + gapW, gapW + 0.02, abs(p.x));
+    shutter *= smoothstep(gateHalfH, 0.0, abs(p.y));
+
+    // Side scanner rails and diagonal accents so it is not static.
+    float railA = smoothstep(0.018, 0.0, abs(abs(p.x) - (0.44 + 0.12*sin(t*1.0 + p.y*2.6))));
+    float railB = smoothstep(0.014, 0.0, abs(abs(p.x) - (0.76 + 0.10*cos(t*1.2 - p.y*1.8))));
+    float diag = smoothstep(0.024, 0.0, abs(p.x*0.72 + p.y*0.42 + 0.18*sin(t*1.4)));
+
+    float gateGlow = smoothstep(0.34, 0.92, gate + shutter*0.5);
+    float pulse = 0.5 + 0.5*sin(t*1.8 + near*4.0);
+
+    vec3 col = palette(base + p.y*0.03) * 0.08;
+    col += palette(0.18 + near*0.10 + pulse*0.06) * gate * 0.24;
+    col += palette(0.42 + near*0.12) * shutter * 0.24;
+    col += palette(0.72 + pulse*0.08) * (railA + railB) * 0.16;
+    col += palette(0.86 + near*0.06) * diag * gateGlow * 0.12;
+    col += palette(0.98) * gateGlow * 0.18;
+    return col;
+  }
+  vec3 scenePrism(vec2 uv, float t){
+    vec2 p = uv * 1.18;
+    float nA = fbm(p*2.6 + vec2(t*0.24, -t*0.18));
+    float nB = fbm(p.yx*3.4 + vec2(-t*0.16, t*0.21));
+    float diagA = smoothstep(0.13, 0.0, abs(fract((p.x - p.y)*4.6 + nA*0.9 - t*0.24) - 0.5));
+    float diagB = smoothstep(0.11, 0.0, abs(fract((p.x + p.y)*5.2 - nB*0.7 + t*0.20) - 0.5));
+    float scan = smoothstep(0.09, 0.0, abs(fract(p.y*3.8 - t*0.46 + nA*0.6) - 0.5));
+    float shards = smoothstep(0.46, 0.78, fbm(p*4.1 + vec2(nA*1.3, nB*1.1) + t*0.12));
+    float cross = pow(max(diagA*diagB, 0.0), 0.8);
+    vec3 col = palette(0.10 + nA*0.22 + p.y*0.04) * 0.16;
+    col += palette(0.28 + nB*0.32 - t*0.03) * diagA * 0.46;
+    col += palette(0.56 + nA*0.24 + t*0.02) * diagB * 0.42;
+    col += palette(0.84 + nB*0.16) * scan * 0.26;
+    col += palette(0.72 + shards*0.18) * shards * 0.24;
+    col += palette(0.96) * cross * 0.28;
+    return col;
+  }
+  vec3 sceneRibbons(vec2 uv, float t){
+    vec2 p = uv * 1.08;
+    float flowA = fbm(p*2.3 + vec2(t*0.24, -t*0.16));
+    float flowB = fbm((p + vec2(2.7, -1.9))*3.0 + vec2(-t*0.20, t*0.15));
+    float ribbonA = smoothstep(0.18, 0.0, abs(p.y + 0.28*sin(p.x*2.9 + t*1.75) - (flowA - 0.5)*0.42));
+    float ribbonB = smoothstep(0.16, 0.0, abs(p.y - 0.24*cos(p.x*3.7 - t*1.42) + (flowB - 0.5)*0.36));
+    vec3 col = palette(flowA*0.42 + p.x*0.06 + t*0.02) * 0.14;
+    col += palette(0.20 + flowA*0.65) * ribbonA * 0.62;
+    col += palette(0.72 + flowB*0.38) * ribbonB * 0.56;
+    col += palette(0.92) * pow(max(ribbonA + ribbonB - 0.95, 0.0), 1.6) * 0.30;
+    return col;
+  }
+  vec3 scenePulse(vec2 uv, float t){
+    float a = atan(uv.y, uv.x);
+    float r = length(uv);
+    float sr = mix(r, max(abs(uv.x), abs(uv.y)) * 1.16, 0.64);
+    float petals = 0.5 + 0.5*cos(a*8.0 - t*2.2);
+    float burst = 0.5 + 0.5*sin(sr*18.0 - t*6.3 + petals*3.2);
+    float ring = smoothstep(0.72, 1.0, burst) * smoothstep(1.18, 0.08, sr);
+    float core = smoothstep(0.52, 0.0, sr);
+    float rays = pow(max(0.0, cos(a*10.0 + t*0.9)), 14.0) * smoothstep(1.10, 0.12, sr);
+    float halo = smoothstep(0.08, 0.0, abs(fract(sr*4.8 - t*0.85) - 0.5)) * smoothstep(1.26, 0.18, sr);
+    vec3 col = palette(0.16 + sr*0.55 + petals*0.20) * (0.18 + 0.28*(1.0 - sr));
+    col += palette(0.78 + petals*0.16) * ring * 0.52;
+    col += palette(0.90) * core * (0.28 + 0.22*petals);
+    col += palette(0.58 + petals*0.12) * rays * 0.24;
+    col += palette(0.34 + sr*0.20 - t*0.03) * halo * 0.16;
+    return col;
+  }
+  vec3 sceneLasers(vec2 uv, float t){
+    vec2 p = uv;
+    float haze = fbm(p*2.4 + vec2(t*0.14, -t*0.08));
+    float pulse = 0.5 + 0.5*sin(t*2.2);
+    vec2 emitL = vec2(-0.85, -0.42 + 0.08*sin(t*0.8));
+    vec2 emitR = vec2( 0.85, -0.38 + 0.09*cos(t*0.7));
+    vec2 qL = p - emitL;
+    vec2 qR = p - emitR;
+    float aL = atan(qL.y, qL.x);
+    float aR = atan(qR.y, qR.x);
+    float fanL1 = pow(max(0.0, cos((aL + 0.85) * 13.0 - t*1.9)), 34.0);
+    float fanL2 = pow(max(0.0, cos((aL + 0.25) * 12.0 - t*1.6)), 28.0);
+    float fanR1 = pow(max(0.0, cos((aR - 0.88) * 13.0 + t*1.8)), 34.0);
+    float fanR2 = pow(max(0.0, cos((aR - 0.18) * 12.0 + t*1.5)), 28.0);
+    float sweep  = smoothstep(0.024, 0.0, abs(p.x*0.72 + p.y*0.28 + 0.26*sin(t*1.4)));
+    float cross  = smoothstep(0.026, 0.0, abs(p.x*0.66 - p.y*0.34 - 0.22*cos(t*1.3)));
+    float leftMask  = smoothstep(1.55, 0.08, length(qL));
+    float rightMask = smoothstep(1.55, 0.08, length(qR));
+    float fanLeft = (fanL1 + fanL2) * leftMask;
+    float fanRight = (fanR1 + fanR2) * rightMask;
+    float hit = pow(max(fanLeft * fanRight + sweep * cross, 0.0), 0.65);
+    vec3 col = palette(0.08 + haze*0.18) * 0.12;
+    col += palette(0.18 + haze*0.20) * fanLeft * (0.44 + pulse*0.14);
+    col += palette(0.54 + haze*0.16) * fanRight * (0.40 + pulse*0.12);
+    col += palette(0.82 + haze*0.10) * sweep * 0.36;
+    col += palette(0.94) * cross * 0.30;
+    col += palette(0.98) * hit * (0.28 + pulse*0.20);
+    col += palette(0.40) * smoothstep(1.0, 0.18, length(p)) * 0.08;
+    return col;
+  }
+  vec3 sceneSmoke(vec2 uv, float t){
+    vec2 p = uv * vec2(1.18, 1.42);
+    vec2 warpA = vec2(
+      fbm(p*1.7 + vec2(t*0.11, -t*0.07)),
+      fbm(p*1.6 + vec2(-t*0.09, t*0.08))
+    ) - 0.5;
+    vec2 warpB = vec2(
+      fbm(p*3.0 - warpA*1.4 + vec2(t*0.16, t*0.05)),
+      fbm(p.yx*2.8 + warpA*1.2 + vec2(-t*0.12, t*0.10))
+    ) - 0.5;
+    vec2 flow = p + warpA*0.55 + warpB*0.24;
+
+    float body = fbm(flow*1.45 + vec2(0.0, -t*0.11));
+    float curl = fbm(flow*2.8 + vec2(t*0.20, -t*0.14));
+    float detail = fbm(flow*5.4 + vec2(-t*0.28, t*0.18));
+    float smoke = smoothstep(0.26, 0.92, body*0.74 + curl*0.34 - detail*0.10);
+
+    float rise = smoothstep(1.0, -0.65, uv.y);
+    float floorFog = smoothstep(0.24, -0.78, uv.y) * smoothstep(0.12, 0.82, body + curl*0.38);
+
+    float leftLight = smoothstep(0.42, 0.0, length(uv - vec2(-0.74, -0.18 + 0.08*sin(t*0.7))));
+    float rightLight = smoothstep(0.42, 0.0, length(uv - vec2(0.78, -0.10 + 0.09*cos(t*0.8))));
+    float glowPockets = smoothstep(0.60, 0.92, smoke + detail*0.26) * rise;
+
+    float beamA = pow(max(0.0, sin((uv.x*0.86 + warpA.x*0.55)*9.0 - t*1.65)), 11.0) * smoothstep(0.92, -0.18, uv.y);
+    float beamB = pow(max(0.0, sin((uv.x*1.04 - warpB.y*0.48)*8.2 + t*1.42)), 11.0) * smoothstep(0.98, -0.10, uv.y);
+    float beamMask = smoothstep(0.32, 0.78, smoke);
+
+    vec3 col = palette(0.08 + body*0.18 + uv.y*0.05) * 0.10;
+    col += palette(0.22 + curl*0.28 - t*0.015) * smoke * (0.18 + 0.24*rise);
+    col += palette(0.46 + body*0.18 + detail*0.10) * floorFog * 0.32;
+    col += palette(0.78 + curl*0.14) * glowPockets * 0.34;
+    col += palette(0.90 + detail*0.06) * (leftLight + rightLight) * 0.18;
+    col += palette(0.68 + body*0.10) * (beamA + beamB) * beamMask * 0.22;
+    col += palette(0.96) * max(leftLight, rightLight) * smoke * 0.12;
+    return col;
+  }
+  vec3 sceneLaserHaze(vec2 uv, float t){
+    vec2 p = uv;
+
+    // ---- sharper nightclub laser rig in the back ----
+    vec2 emitL = vec2(-0.84, -0.44 + 0.08*sin(t*0.74));
+    vec2 emitR = vec2( 0.84, -0.40 + 0.08*cos(t*0.68));
+    vec2 qL = p - emitL;
+    vec2 qR = p - emitR;
+    float aL = atan(qL.y, qL.x);
+    float aR = atan(qR.y, qR.x);
+    float pulse = 0.5 + 0.5*sin(t*2.4);
+
+    float fanL1 = pow(max(0.0, cos((aL + 0.86) * 16.0 - t*1.8)), 58.0);
+    float fanL2 = pow(max(0.0, cos((aL + 0.26) * 15.0 - t*1.5)), 52.0);
+    float fanR1 = pow(max(0.0, cos((aR - 0.88) * 16.0 + t*1.75)), 58.0);
+    float fanR2 = pow(max(0.0, cos((aR - 0.18) * 15.0 + t*1.42)), 52.0);
+    float scanA = smoothstep(0.016, 0.0, abs(p.x*0.74 + p.y*0.26 + 0.24*sin(t*1.3)));
+    float scanB = smoothstep(0.016, 0.0, abs(p.x*0.68 - p.y*0.32 - 0.22*cos(t*1.2)));
+    float scanC = smoothstep(0.014, 0.0, abs(p.x*0.12 + p.y*0.98 - 0.10*sin(t*0.9)));
+
+    float leftReach  = smoothstep(1.70, 0.10, length(qL));
+    float rightReach = smoothstep(1.70, 0.10, length(qR));
+    float fanLeft = (fanL1 + fanL2) * leftReach;
+    float fanRight = (fanR1 + fanR2) * rightReach;
+    float beamCore = max(max(fanLeft, fanRight), max(scanA, scanB) + scanC*0.9);
+    float beamGlow = smoothstep(0.12, 0.82, beamCore);
+    float hit = pow(max(fanLeft * fanRight + scanA * scanB, 0.0), 0.55);
+
+    vec3 laserCol = palette(0.08 + pulse*0.04) * 0.08;
+    laserCol += palette(0.18 + pulse*0.06) * fanLeft * 0.72;
+    laserCol += palette(0.52 + pulse*0.06) * fanRight * 0.70;
+    laserCol += palette(0.78 + pulse*0.04) * (scanA + scanB) * 0.52;
+    laserCol += palette(0.94) * scanC * 0.46;
+    laserCol += palette(0.98) * hit * (0.34 + pulse*0.22);
+    laserCol += palette(0.98) * beamGlow * 0.10;
+
+    // ---- smoke in front, with soft light carry from the lasers ----
+    vec2 sp = p * vec2(1.18, 1.42);
+    vec2 warpA = vec2(
+      fbm(sp*1.7 + vec2(t*0.11, -t*0.07)),
+      fbm(sp*1.6 + vec2(-t*0.09, t*0.08))
+    ) - 0.5;
+    vec2 warpB = vec2(
+      fbm(sp*3.0 - warpA*1.4 + vec2(t*0.16, t*0.05)),
+      fbm(sp.yx*2.8 + warpA*1.2 + vec2(-t*0.12, t*0.10))
+    ) - 0.5;
+    vec2 flow = sp + warpA*0.55 + warpB*0.24;
+
+    float body = fbm(flow*1.45 + vec2(0.0, -t*0.11));
+    float curl = fbm(flow*2.8 + vec2(t*0.20, -t*0.14));
+    float detail = fbm(flow*5.4 + vec2(-t*0.28, t*0.18));
+    float smoke = smoothstep(0.24, 0.90, body*0.74 + curl*0.34 - detail*0.10);
+    float rise = smoothstep(1.0, -0.62, uv.y);
+    float floorFog = smoothstep(0.24, -0.80, uv.y) * smoothstep(0.10, 0.84, body + curl*0.38);
+    float frontSmoke = smoke * (0.44 + 0.56*rise);
+    float occlusion = clamp(frontSmoke * (0.52 + 0.28*floorFog), 0.0, 0.78);
+
+    vec3 smokeCol = palette(0.08 + body*0.18 + uv.y*0.05) * 0.13;
+    smokeCol += palette(0.22 + curl*0.24 - t*0.015) * smoke * (0.26 + 0.28*rise);
+    smokeCol += palette(0.46 + body*0.18 + detail*0.10) * floorFog * 0.34;
+    smokeCol += palette(0.80 + pulse*0.05) * beamGlow * smoke * 0.22;
+    smokeCol += palette(0.96) * hit * smoke * 0.10;
+
+    vec3 col = laserCol * (1.0 - occlusion);
+    col += smokeCol;
+    col += palette(0.98) * beamGlow * smoke * 0.05;
+    return col;
+  }
+  vec3 sceneRaveLasers(vec2 uv, float t){
+    float spd=u_sceneParamsA.x, bcount=u_sceneParamsA.y, bsharp=u_sceneParamsA.z, hazeK=u_sceneParamsA.w;
+    float glow=u_sceneParamsB.x, aud=u_sceneParamsB.y, geod=u_sceneParamsB.z, crowdK=u_sceneParamsB.w;
+    float tt=t*spd;
+    vec2 p = uv;
+    float haze = fbm(p*2.0 + vec2(tt*0.10, -tt*0.06));
+    float haze2 = fbm(p*4.0 + vec2(-tt*0.08, tt*0.05));
+    float roomHaze = smoothstep(-0.88, 0.78, p.y) * (0.22 + 0.36*haze) * hazeK;
+    float pulse = 0.5 + 0.5*sin(tt*2.1);
+
+    vec3 col = palette(0.08 + haze*0.14 + p.y*0.04) * 0.08;
+
+    vec2 emit0 = vec2(-0.52, -0.76);
+    vec2 emit1 = vec2( 0.00, -0.80);
+    vec2 emit2 = vec2( 0.52, -0.76);
+
+    vec2 q0 = p - emit0;
+    vec2 q1 = p - emit1;
+    vec2 q2 = p - emit2;
+    float a0 = atan(q0.y, q0.x);
+    float a1 = atan(q1.y, q1.x);
+    float a2 = atan(q2.y, q2.x);
+    float m0 = smoothstep(2.00, 0.14, length(q0));
+    float m1 = smoothstep(2.10, 0.14, length(q1));
+    float m2 = smoothstep(2.00, 0.14, length(q2));
+
+    float fan0 = pow(max(0.0, cos((a0 + 0.94) * 18.0*bcount - tt*1.9)), 68.0*bsharp);
+    float fan1 = pow(max(0.0, cos((a0 + 0.40) * 16.0*bcount - tt*1.5)), 54.0*bsharp);
+    float fan2 = pow(max(0.0, cos((a1 + 0.00) * 22.0*bcount + tt*1.3)), 74.0*bsharp);
+    float fan3 = pow(max(0.0, cos((a1 - 0.52) * 18.0*bcount + tt*1.8)), 60.0*bsharp);
+    float fan4 = pow(max(0.0, cos((a2 - 0.96) * 18.0*bcount + tt*1.9)), 68.0*bsharp);
+    float fan5 = pow(max(0.0, cos((a2 - 0.42) * 16.0*bcount + tt*1.5)), 54.0*bsharp);
+
+    float beamsL = (fan0 + fan1) * m0;
+    float beamsC = (fan2 + fan3) * m1;
+    float beamsR = (fan4 + fan5) * m2;
+
+    float crossA = smoothstep(0.014, 0.0, abs(p.x*0.82 + p.y*0.30 + 0.22*sin(tt*1.2)));
+    float crossB = smoothstep(0.014, 0.0, abs(p.x*0.76 - p.y*0.28 - 0.24*cos(tt*1.1)));
+    float ceiling = smoothstep(0.012, 0.0, abs(p.y - (0.22 + 0.14*sin(tt*0.9 + p.x*1.8))));
+    float geo = smoothstep(0.018, 0.0, abs(fract((p.x + p.y*0.42)*6.0 - tt*0.22) - 0.5)) * smoothstep(-0.12, 0.88, p.y) * geod;
+
+    float intersect = pow(max(beamsL*beamsC + beamsC*beamsR + crossA*crossB, 0.0), 0.60);
+    float hazeMask = smoothstep(0.18, 0.92, roomHaze + haze2*0.18);
+
+    col += palette(0.18 + pulse*0.06) * beamsL * (0.34 + 0.20*hazeMask);
+    col += palette(0.46 + pulse*0.06) * beamsC * (0.38 + 0.22*hazeMask);
+    col += palette(0.74 + pulse*0.06) * beamsR * (0.34 + 0.20*hazeMask);
+    col += palette(0.86 + haze*0.06) * (crossA + crossB) * 0.26;
+    col += palette(0.96) * ceiling * 0.18;
+    col += palette(0.62 + haze2*0.08) * geo * 0.14;
+    col += palette(0.98) * intersect * (0.22 + 0.26*pulse);
+    col += palette(0.90) * (beamsL + beamsC + beamsR + crossA + crossB) * hazeMask * 0.06;
+
+    // Soft audience silhouette so the view feels like you're in the crowd.
+    float crowd = smoothstep(0.16, 0.0, abs(fract((p.x + 1.4)*3.4) - 0.5)) * smoothstep(-0.56, -0.92, p.y);
+    col *= 1.0 - crowd*0.22*crowdK;
+    col *= glow * (1.0 + aud*0.7*u_energy);
+    return col;
+  }
+  vec3 sceneAurora(vec2 uv, float t){
+    vec2 p = uv * 1.10;
+    float drift = fbm(vec2(p.x*1.4 + t*0.10, p.y*1.8 - t*0.12));
+    float drift2 = fbm(vec2(p.x*2.1 - t*0.07, p.y*2.6 + t*0.09));
+    float bandA = smoothstep(0.17, 0.0, abs(p.y + 0.34*sin(p.x*1.5 + drift*2.6 + t*0.34) - (drift - 0.5)*0.64));
+    float bandB = smoothstep(0.15, 0.0, abs(p.y + 0.08 + 0.28*cos(p.x*1.9 - drift2*2.3 - t*0.28) + (drift2 - 0.5)*0.52));
+    float curtain = smoothstep(0.10, 0.0, abs(fract(p.x*1.4 + drift*1.3 - t*0.06) - 0.5));
+    vec3 col = palette(0.10 + drift*0.20) * smoothstep(-0.8, 0.8, p.y + 0.9) * 0.14;
+    col += palette(0.26 + drift*0.42) * bandA * 0.52;
+    col += palette(0.62 + drift2*0.26) * bandB * 0.46;
+    col += palette(0.88 + drift*0.08) * curtain * (bandA + bandB) * 0.20;
+    return col;
+  }
+  vec3 sceneInterference(vec2 uv, float t){
+    vec2 p = uv * 1.15;
+    float waveA = sin(p.x*10.0 + sin(p.y*2.6 - t*0.8)*2.0 - t*2.3);
+    float waveB = sin(p.y*11.0 + cos(p.x*2.1 + t*0.7)*2.3 + t*2.0);
+    float waveC = sin((p.x + p.y)*8.5 - t*2.8);
+    float moire = 0.5 + 0.5*sin((waveA + waveB + waveC) * 2.2);
+    float ridge = smoothstep(0.72, 0.98, moire);
+    float weave = smoothstep(0.08, 0.0, abs(fract((p.x - p.y)*4.6 + waveB*0.2) - 0.5));
+    vec3 col = palette(0.12 + moire*0.16 + t*0.01) * 0.16;
+    col += palette(0.40 + waveA*0.08 + waveB*0.06) * ridge * 0.42;
+    col += palette(0.74 + waveC*0.08) * weave * 0.22;
+    return col;
+  }
+  vec3 scenePhase(vec2 uv, float t){
+    vec2 p = uv;
+    vec2 q = vec2(p.x, p.y + 0.04);
+    float depth = 1.0 / max(0.34, 1.14 - q.y);
+    float z = t * 1.38 + depth * 1.52;
+
+    float waveA = sin(q.x*8.4 + sin(q.y*2.2 - t*0.62)*1.9 - t*1.95);
+    float waveB = sin(q.y*9.7 + cos(q.x*2.0 + t*0.56)*2.1 + t*1.78);
+    float waveC = sin((q.x - q.y*0.74)*7.6 - t*2.34);
+    float field = waveA + waveB + waveC;
+    float moire = 0.5 + 0.5*sin(field * 2.05);
+
+    float lineA = smoothstep(0.092, 0.0, abs(fract(field*0.82) - 0.5));
+    float lineB = smoothstep(0.058, 0.0, abs(fract(field*1.58 + 0.28) - 0.5));
+    float lineC = smoothstep(0.042, 0.0, abs(fract(field*2.26 + 0.12) - 0.5));
+    float weave = max(lineA * (0.34 + 0.66*lineB), lineC * 0.62);
+    float sparseMask = smoothstep(0.68, 0.95, moire);
+    float sparseLines = weave * sparseMask * smoothstep(-0.90, 0.42, q.y);
+
+    float xCells = (q.x + 2.45) * 6.8;
+    float xCenter = abs(fract(xCells) - 0.5);
+    float travel = fract(z + floor(xCells) * 0.117);
+    float near = pow(1.0 - travel, 2.3);
+    float colWidth = mix(0.009, 0.10, near);
+    float column = smoothstep(colWidth, 0.0, xCenter);
+    float columnMask = smoothstep(0.74, 0.96, 1.0 - moire);
+    float columnFade = smoothstep(0.02, 0.16, travel) * smoothstep(1.0, 0.70, travel);
+    float columnLight = column * columnMask * columnFade * smoothstep(-0.92, 0.56, q.y);
+
+    float rung = smoothstep(0.08, 0.0, abs(fract((q.y + near*0.48) * mix(2.2, 12.0, near) - t*0.34) - 0.5)) * columnLight;
+    float sideSweep = pow(max(0.0, sin(abs(q.x)*5.9 - q.y*1.06 - t*2.65)), 16.0) * smoothstep(0.82, -0.06, q.y);
+    float dust = fbm(vec2(q.x*1.6 + t*0.06, q.y*2.1 - t*0.11));
+    float wash = smoothstep(0.56, 0.92, moire) * smoothstep(-0.78, 0.58, q.y);
+
+    vec3 col = palette(0.10 + dust*0.04 + moire*0.05) * 0.16;
+    col += palette(0.24 + moire*0.10 + waveA*0.05) * wash * 0.10;
+    col += palette(0.34 + waveA*0.05 + waveB*0.04) * sparseLines * 0.38;
+    col += palette(0.56 + waveC*0.05 + near*0.08) * columnLight * 0.32;
+    col += palette(0.72 + moire*0.08) * rung * 0.24;
+    col += palette(0.86 + dust*0.05) * sideSweep * 0.18;
+    col += palette(0.98) * columnLight * (0.10 + 0.12*near);
+    return col;
+  }
+  vec3 sceneComets(vec2 uv, float t){
+    vec2 p = uv;
+    vec3 col = palette(0.08 + p.y*0.10) * 0.10;
+    for(int i=0;i<6;i++){
+      float fi = float(i);
+      float seed = hash21(vec2(fi, 4.7));
+      float ph = fract(seed + t*(0.18 + seed*0.18));
+      vec2 head = vec2(mix(-1.35, 1.35, fract(seed*2.3 + ph*1.2)),
+                       mix(1.05, -1.15, ph));
+      vec2 dir = normalize(vec2(0.42 + seed*0.5, -0.9));
+      vec2 rel = p - head;
+      float along = dot(rel, -dir);
+      float side = abs(dot(rel, vec2(-dir.y, dir.x)));
+      float trail = smoothstep(0.34, 0.0, side) * smoothstep(-0.04, 0.22, along) * smoothstep(1.28, 0.0, along);
+      float headGlow = smoothstep(0.12, 0.0, length(rel));
+      col += palette(seed + fi*0.09 + t*0.03) * trail * 0.34;
+      col += palette(0.92 + seed*0.06) * headGlow * 0.30;
+    }
+    return col;
+  }
+  vec3 sceneLattice(vec2 uv, float t){
+    // interference, made geometric: the SAME beating sine fields as sceneInterference,
+    // but the moire is sliced into crisp contour lines so the fringes read sharp.
+    vec2 p = uv * 1.15;
+    float waveA = sin(p.x*10.0 + sin(p.y*2.6 - t*0.8)*2.0 - t*2.3);
+    float waveB = sin(p.y*11.0 + cos(p.x*2.1 + t*0.7)*2.3 + t*2.0);
+    float waveC = sin((p.x + p.y)*8.5 - t*2.8);
+    float waveD = sin((p.x - p.y)*8.5 + t*2.5);            // 4th front -> diamond moire
+    float field = waveA + waveB + waveC + waveD;
+    // hard contour bands of the interference field (crisp instead of soft ridges)
+    float bands = abs(fract(field*0.85) - 0.5);
+    float line  = smoothstep(0.075, 0.0, bands);
+    // a second, finer contour set offset in phase -> sharp moire beat between them
+    float fine  = smoothstep(0.05, 0.0, abs(fract(field*1.7 + 0.5) - 0.5));
+    float nodes = line * fine;                             // bright where fringes cross
+    vec3 col = palette(0.12 + 0.05*sin(t*0.2)) * 0.14;
+    col += palette(0.40 + waveA*0.08 + waveB*0.06) * line * 0.46;
+    col += palette(0.74 + waveC*0.08) * fine * 0.22;
+    col += palette(0.94) * nodes * 0.5;
+    return col;
+  }
+  vec3 sceneRipple(vec2 uv, float t){
+    // concentric interference: moving point sources beat into Newton's-rings moire,
+    // mapped across the FULL palette so the fringes are richly multi-colored.
+    vec2 p = uv * 1.15;
+    float field = 0.0;
+    for(int i=0;i<4;i++){
+      float fi = float(i);
+      vec2 src = 0.9 * vec2(sin(t*0.33 + fi*1.7), cos(t*0.27 + fi*2.1));
+      field += sin(length(p - src)*15.0 - t*2.2 + fi*1.1);
+    }
+    float ph = 0.5 + field*0.13 + 0.04*t;                  // wide swing -> many colors
+    vec3 col = palette(ph) * (0.26 + 0.09*field);
+    float fringe = smoothstep(0.085, 0.0, abs(fract(field*0.5) - 0.5));
+    col += palette(ph + 0.35) * fringe * 0.55;             // crisp concentric rings
+    col += palette(0.95) * smoothstep(3.1, 3.9, abs(field)) * 0.4;  // bright antinodes
+    return col;
+  }
+  vec3 sceneWarp(vec2 uv, float t){
+    // the interference look, but the domain is warped so the moire fringes curve and
+    // flow like liquid; still sliced into sharp multi-color contour lines.
+    vec2 p = uv * 1.2;
+    p += 0.20 * vec2(sin(p.y*3.0 + t*0.4), cos(p.x*3.0 - t*0.3));   // domain warp
+    float a = sin(p.x*9.0 - t*1.8 + sin(p.y*2.2)*1.5);
+    float b = sin(p.y*9.5 + t*1.6 + cos(p.x*2.0)*1.5);
+    float c = sin((p.x + p.y)*7.0 - t*2.0);
+    float field = a + b + c;
+    float ph = 0.5 + field*0.16 + 0.03*t;
+    vec3 col = palette(ph) * 0.20;
+    col += palette(ph + 0.30) * smoothstep(0.085, 0.0, abs(fract(field*0.8) - 0.5)) * 0.50;
+    col += palette(ph + 0.60) * smoothstep(0.05, 0.0, abs(fract(field*1.6 + 0.5) - 0.5)) * 0.26;
+    return col;
+  }
+  vec3 sceneContour(vec2 uv, float t){
+    // topographic interference: a drifting field sliced into many equal-value bands,
+    // each band a different palette color -> a flowing multi-color contour map.
+    vec2 p = uv * 1.4;
+    float h = fbm(p*1.3 + vec2(t*0.08, -t*0.05));
+    h += 0.5 * fbm(p*2.7 - vec2(t*0.04, t*0.06));
+    h += 0.18 * sin(p.x*4.0 + t*0.3) * sin(p.y*4.0 - t*0.2);
+    float ph = h*1.35 + 0.04*t;                            // full-spectrum by height
+    vec3 col = palette(ph) * (0.34 + 0.5*h);
+    float line = smoothstep(0.06, 0.0, abs(fract(h*9.0) - 0.5));
+    col += palette(ph + 0.5) * line * 0.5;                 // crisp contour lines
+    return col;
+  }
+  vec3 sceneFractalBloom(vec2 uv, float t){
+    vec2 base = uv;
+    vec2 p = uv;
+    vec3 finalColor = vec3(0.0);
+    float r = length(base);
+    float fade = exp(-r * 0.82);
+    for(int i=0;i<3;i++){
+      float fi = float(i);
+      p = fract(p * (1.46 + fi*0.06)) - 0.5;
+      float d = length(p) * fade;
+      float orbit = 0.56 + 0.44*cos(atan(base.y, base.x) * 5.0 - t*0.64 + fi*0.92);
+      vec3 col = palette(r*0.22 + fi*0.18 + t*0.09);
+      d = sin(d*7.2 + t*1.10 + fi*0.9) / 7.0;
+      d = abs(d);
+      d = pow(0.010 / max(d, 0.0018), 1.10);
+      finalColor += col * d * orbit * 1.28;
+    }
+    float halo = smoothstep(1.18, 0.16, r);
+    float core = smoothstep(0.30, 0.0, r);
+    finalColor += palette(0.34 + r*0.14 - t*0.02) * halo * 0.22;
+    finalColor += palette(0.90 - r*0.18 + t*0.03) * core * 0.34;
+    return finalColor * 0.19;
+  }
+  vec3 sceneHelixBloom(vec2 uv, float t){
+    vec2 base = uv;
+    vec2 p = uv;
+    vec3 finalColor = vec3(0.0);
+    float baseLen = length(base) + 1e-4;
+    float ang = atan(base.y, base.x);
+    for(int i=0;i<4;i++){
+      float fi = float(i);
+      float a = t*0.24 + fi*0.68 + baseLen*0.8;
+      mat2 rot = mat2(cos(a), -sin(a), sin(a), cos(a));
+      p = rot * p;
+      p = abs(p);
+      p = fract(p * (1.42 + fi*0.05) + vec2(t*0.04, -t*0.03)) - 0.5;
+      float d = length(p + vec2(cos(ang*3.0 + fi), sin(ang*4.0 - fi)) * 0.08) * exp(-baseLen);
+      vec3 col = palette(baseLen*0.34 + fi*0.22 - t*0.05 + ang*0.03);
+      d = sin(d*9.1 - t*1.24 + ang*2.0) / 8.8;
+      d = abs(d);
+      d = pow(0.010 / max(d, 0.0018), 1.10);
+      float twist = 0.48 + 0.52*cos(ang*8.0 - t + fi);
+      finalColor += col * d * twist * 1.24;
+    }
+    float core = smoothstep(0.24, 0.0, baseLen);
+    finalColor += palette(0.58 + ang*0.03 + t*0.02) * smoothstep(1.08, 0.16, baseLen) * 0.18;
+    finalColor += palette(0.82 + ang*0.04 - t*0.04) * core * 0.30;
+    return finalColor * 0.175;
+  }
+  vec3 sceneHaloBloom(vec2 uv, float t){
+    vec2 base = uv;
+    vec3 finalColor = vec3(0.0);
+    float baseLen = length(base);
+    float ang = atan(base.y, base.x);
+    for(int i=0;i<3;i++){
+      float fi = float(i);
+      vec2 p = base * (1.0 + fi*0.16);
+      p = fract(p * 1.34 + vec2(t*0.05, -t*0.03) + fi*0.12) - 0.5;
+      float petal = abs(cos(ang*4.0 - t*0.72 + fi));
+      float d = length(p) * exp(-baseLen*0.64);
+      vec3 col = palette(baseLen*0.24 + fi*0.26 + t*0.08);
+      d = sin(d*8.2 - t*1.1 + petal*2.8) / 7.8;
+      d = abs(d);
+      d = pow(0.012 / max(d, 0.0022), 1.04);
+      finalColor += col * d * (0.48 + 0.52*petal) * 1.26;
+    }
+    float ring = smoothstep(0.20, 0.0, abs(baseLen - (0.36 + 0.06*sin(t*0.8))));
+    float core = smoothstep(0.56, 0.04, baseLen);
+    finalColor += palette(0.72 + ang*0.02 - t*0.03) * ring * 0.50;
+    finalColor += palette(0.18 + baseLen*0.22) * core * 0.28;
+    return finalColor * 0.145;
+  }
+  vec3 scenePrismBloom(vec2 uv, float t){
+    // uv reaches ~2.0 at the screen corners here, so scale down to fill the frame
+    // (smaller multiplier = pattern fills more of the screen) and widen every
+    // radial falloff so the prism radiates all the way to the edges/corners.
+    vec2 base = uv * 0.68;
+    vec3 finalColor = vec3(0.0);
+    float baseLen = length(base);
+    vec2 p = base;
+    for(int i=0;i<3;i++){
+      float fi = float(i);
+      p = abs(p);
+      p = fract(p * (1.36 + fi*0.08) + vec2(t*0.05, -t*0.02)) - 0.5;
+      float diamond = max(abs(p.x)*0.78 + abs(p.y), abs(p.x) + abs(p.y)*0.58);
+      float d = diamond * exp(-baseLen*0.40);
+      vec3 col = palette(baseLen*0.28 + fi*0.24 + t*0.07 + base.y*0.08);
+      d = sin(d*9.0 - t*1.05 + fi*0.8) / 8.2;
+      d = abs(d);
+      d = pow(0.012 / max(d, 0.0024), 1.05);
+      float fanA = smoothstep(2.10, 0.10, abs(base.x*0.82 + base.y*0.22));
+      float fanB = smoothstep(2.05, 0.12, abs(base.x*0.86 - base.y*0.18));
+      float spread = max(fanA, fanB) * smoothstep(2.30, 0.14, baseLen + abs(base.y)*0.14);
+      finalColor += col * d * spread * 1.34;
+    }
+    float spine = smoothstep(0.10, 0.0, abs(base.x + 0.10*sin(base.y*5.0 - t*0.5)));
+    float wingA = smoothstep(0.13, 0.0, abs(base.x*0.64 + abs(base.y)*0.42 - 0.34));
+    float wingB = smoothstep(0.13, 0.0, abs(base.x*0.64 - abs(base.y)*0.42 + 0.34));
+    float core = smoothstep(0.28, 0.0, baseLen);
+    finalColor += palette(0.88 + base.y*0.10 - t*0.04) * spine * 0.40;
+    finalColor += palette(0.56 + baseLen*0.14 + t*0.02) * (wingA + wingB) * 0.24;
+    finalColor += palette(0.14 + baseLen*0.18 + t*0.03) * core * 0.24;
+    return finalColor * 0.152;
+  }
+  vec3 sceneFractTunnel(vec2 uv, float t){
+    vec2 base = uv;
+    float r = length(base) + 1e-4;
+    float ang = atan(base.y, base.x);
+    float depth = 0.34 / r + t*0.96;
+    vec3 finalColor = vec3(0.0);
+
+    for(int i=0;i<3;i++){
+      float fi = float(i);
+      float laneDepth = depth * (0.74 + fi*0.16);
+      vec2 p = base * (1.0 + fi*0.18);
+      p *= 0.72 / max(r, 0.12);
+      p = fract(p * (1.36 + fi*0.12) + vec2(laneDepth*0.10, -t*0.035)) - 0.5;
+      float tube = length(p);
+      float wave = abs(sin(tube*12.0 + laneDepth - t*0.72 + fi*0.9));
+      float glow = pow(0.012 / max(wave*0.16 + tube*0.06, 0.0022), 1.08);
+      float spoke = pow(max(0.0, cos(ang*10.0 + laneDepth*0.36 - fi)), 10.0);
+      float ring = smoothstep(0.10, 0.0, abs(fract(laneDepth*0.22 + fi*0.13) - 0.5));
+      vec3 col = palette(laneDepth*0.026 + fi*0.15 + r*0.08);
+      finalColor += col * glow * (0.34 + 0.66*ring + 0.52*spoke);
+    }
+
+    float throat = smoothstep(0.26, 0.0, r);
+    float centerBeam = pow(max(0.0, 1.0 - r*2.2), 3.0);
+    float tunnelRings = smoothstep(0.08, 0.0, abs(fract(depth*0.30) - 0.5));
+    float edgeHalo = smoothstep(1.06, 0.14, r) * pow(max(0.0, cos(ang*6.0 - depth*0.10)), 7.0);
+    finalColor += palette(0.92 + depth*0.015) * throat * 0.56;
+    finalColor += palette(0.68 + depth*0.020 - t*0.03) * centerBeam * 0.34;
+    finalColor += palette(0.42 + depth*0.018) * tunnelRings * smoothstep(1.18, 0.10, r) * 0.22;
+    finalColor += palette(0.60 + ang*0.03 + t*0.02) * edgeHalo * 0.16;
+    return finalColor * 0.135;
+  }
+  vec3 sceneFrostShards(vec2 uv, float t){
+    float spd=u_sceneParamsA.x, zoom=u_sceneParamsA.y, twk=u_sceneParamsA.z;
+    float steps=clamp(u_sceneParamsA.w, 4.0, 48.0);
+    float glow=u_sceneParamsB.x, corb=u_sceneParamsB.y, shim=u_sceneParamsB.z;
+    float tt=t*spd;
+    vec3 rd = normalize(vec3(uv * 0.5 * zoom, 1.0));
+    vec3 sum = vec3(0.0);
+    float z = 0.0;
+    vec3 lastP = vec3(0.0);
+
+    for(int i=0;i<48;i++){
+      if(i >= int(steps)) break;
+      vec3 p = z * rd;
+      float phase = cos(z * 0.5 * twk);
+      mat2 twist = mat2(
+        cos(phase),
+        cos(phase + 11.0),
+        cos(phase + 33.0),
+        cos(phase)
+      );
+      p = abs(fract(vec3(twist * p.xy * 2.0, p.z - tt)) - 0.5) - 0.5;
+      vec3 q = max(p, vec3(0.25));
+      float d = abs(length(q) + max(p.x, max(p.y, p.z * 3.0))) / 3.0 + abs(sin(z * 0.7 - tt)) * 0.001;
+      d = max(d, 0.0008);
+      sum += vec3(1.0 / d);
+      z += d * 0.8;
+      lastP = p;
+    }
+
+    float shardHue = z * 0.038 + lastP.x * 0.18 + lastP.y * 0.11 - tt * 0.035;
+    vec3 shardColor = palette(shardHue);
+    float lastLen2 = dot(lastP.xy, lastP.xy);
+    vec3 edgeColor = palette(shardHue + 0.42 + lastLen2 * 0.06);
+    float core = smoothstep(0.67, 0.006, dot(uv, uv));
+    float edge = smoothstep(0.10, 0.0, abs(lastP.z + 0.12));
+    vec3 col = sum * mix(shardColor, edgeColor, 0.38 + edge * 0.34) * z / 17800.0;
+    col += mix(edgeColor, shardColor, 0.45) * core * 0.19 * corb;
+    col += shardColor * 0.035 * smoothstep(1.35, 0.12, dot(uv, uv));
+    col *= (1.0 + (0.22 + 0.16 * sin(tt * 0.7)) * shim);
+    col *= glow;
+    return col;
+  }
+  bool isFlowFamily(int s){ return s >= 12 && s <= 14; }
+  void flowFamilyPreset(int s, out vec4 a, out vec4 b, out vec4 c){
+    if(s == 12){
+      a = vec4(1.15, 10.0, 11.0, 8.5);
+      b = vec4(0.00, 0.00, 0.00, 0.00);
+      c = vec4(0.72, 0.98, 0.080, 0.050);
+      return;
+    }
+    if(s == 13){
+      a = vec4(1.00, 8.4, 9.7, 7.6);
+      b = vec4(0.08, 0.00, 1.00, 0.16);
+      c = vec4(0.68, 0.95, 0.092, 0.058);
+      return;
+    }
+    if(s == 14){
+      a = vec4(1.15, 10.0, 11.0, 8.5);
+      b = vec4(0.00, 0.00, 0.08, 0.40);
+      c = vec4(0.62, 0.94, 0.075, 0.050);
+      return;
+    }
+    if(s == 15){
+      a = vec4(1.15, 9.0, 9.0, 7.2);
+      b = vec4(0.00, 1.00, 0.00, 0.06);
+      c = vec4(0.60, 0.92, 0.085, 0.055);
+      return;
+    }
+    if(s == 16){
+      a = vec4(1.20, 9.0, 9.5, 7.0);
+      b = vec4(0.20, 0.00, 0.00, 0.10);
+      c = vec4(0.64, 0.93, 0.085, 0.050);
+      return;
+    }
+    a = vec4(1.40, 4.0, 4.0, 6.8);
+    b = vec4(0.00, 0.00, 0.00, 1.00);
+    c = vec4(0.58, 0.90, 0.060, 0.040);
+  }
+  vec3 sceneFlowMorph(vec2 uv, float t, vec4 a, vec4 b, vec4 c){
+    vec2 p = uv * a.x;
+    if(b.x > 0.001){
+      p += b.x * vec2(sin(p.y*3.0 + t*0.40), cos(p.x*3.0 - t*0.30));
+    }
+
+    float waveA = sin(p.x*a.y + sin(p.y*2.4 - t*(0.72 + b.x*0.7))*2.0 - t*(2.0 + b.z*0.28));
+    float waveB = sin(p.y*a.z + cos(p.x*2.1 + t*(0.56 + b.w*0.18))*2.2 + t*(1.82 + b.x*0.5));
+    float waveC = sin((p.x + p.y*0.78)*a.w - t*(2.34 + b.z*0.18));
+    float field = waveA + waveB + waveC;
+
+    float radial = 0.0;
+    if(b.y > 0.001){
+      for(int i=0;i<3;i++){
+        float fi = float(i);
+        vec2 src = 0.86 * vec2(sin(t*0.30 + fi*1.8), cos(t*0.24 + fi*2.0));
+        radial += sin(length(p - src)*mix(10.0, 14.5, b.y) - t*2.0 + fi*1.2);
+      }
+      field = mix(field, field + radial*0.34, b.y);
+    }
+
+    float moire = 0.5 + 0.5*sin(field * mix(2.0, 2.25, b.w));
+    float lineA = smoothstep(c.z, 0.0, abs(fract(field*0.82) - 0.5));
+    float lineB = smoothstep(c.w, 0.0, abs(fract(field*1.58 + 0.28) - 0.5));
+    float lineC = smoothstep(max(c.w*0.78, 0.028), 0.0, abs(fract(field*2.22 + 0.10) - 0.5));
+    float lines = max(lineA * (0.34 + 0.66*lineB), lineC * (0.32 + b.w*0.30));
+    float maskCore = smoothstep(c.x, c.y, moire);
+    float verticalMask = smoothstep(-0.92, 0.56, p.y);
+    float mask = mix(0.34, 1.0, maskCore) * mix(0.46, 1.0, verticalMask);
+
+    float xCells = (p.x + 2.45) * mix(6.0, 6.8, clamp(b.z, 0.0, 1.0));
+    float xCenter = abs(fract(xCells) - 0.5);
+    float travel = fract(t*0.20 + floor(xCells) * 0.117);
+    float near = pow(1.0 - travel, 2.3);
+    float colWidth = mix(0.010, 0.10, near);
+    float column = smoothstep(colWidth, 0.0, xCenter);
+    float columnMask = smoothstep(0.74, 0.96, 1.0 - moire);
+    float columnLight = column * columnMask * smoothstep(0.02, 0.16, travel) * smoothstep(1.0, 0.70, travel) * smoothstep(-0.92, 0.56, p.y) * b.z;
+
+    float rung = smoothstep(0.08, 0.0, abs(fract((p.y + near*0.48) * mix(2.2, 12.0, near) - t*0.34) - 0.5)) * columnLight;
+    float dust = fbm(vec2(p.x*1.6 + t*0.06, p.y*2.1 - t*0.11));
+
+    float contourField = 0.0;
+    float contourLine = 0.0;
+    if(b.w > 0.001){
+      contourField = fbm(p*1.3 + vec2(t*0.08, -t*0.05));
+      contourField += 0.5 * fbm(p*2.7 - vec2(t*0.04, t*0.06));
+      contourField += 0.18 * sin(p.x*4.0 + t*0.3) * sin(p.y*4.0 - t*0.2);
+      contourLine = smoothstep(0.06, 0.0, abs(fract(contourField*mix(7.0, 9.0, b.w)) - 0.5)) * b.w;
+    }
+
+    float lineBed = lineA * (0.42 + 0.30*lineB) + lineC * 0.26;
+    vec3 col = palette(0.10 + dust*0.04 + moire*0.05 + contourField*0.10*b.w) * (0.24 + 0.08*b.w);
+    col += palette(0.22 + moire*0.08 + waveA*0.04) * lineBed * (0.22 + 0.14*verticalMask);
+    col += palette(0.32 + waveA*0.05 + waveB*0.04) * lines * mask * (0.42 + 0.16*b.x + 0.14*b.w);
+    col += palette(0.56 + waveC*0.05 + near*0.08) * columnLight * 0.30;
+    col += palette(0.74 + moire*0.06 + contourField*0.12*b.w) * (rung * 0.72 + contourLine * 0.46);
+    col += palette(0.92 + dust*0.04) * contourLine * 0.22;
+    col += palette(0.98) * columnLight * (0.08 + 0.10*near);
+    col *= 1.12;
+    return col;
+  }
+  vec3 getSceneBase(int s, vec2 uv, float t){
+    if(s==0) return sceneTunnel(uv,t);
+    if(s==1) return sceneKaleido(uv,t);
+    if(s==2) return scenePlasma(uv,t);
+    if(s==3) return sceneGrid(uv,t);
+    if(s==4) return scenePrism(uv,t);
+    if(s==5) return sceneRibbons(uv,t);
+    if(s==6) return scenePulse(uv,t);
+    if(s==7) return sceneLasers(uv,t);
+    if(s==8) return sceneSmoke(uv,t);
+    if(s==9) return sceneLaserHaze(uv,t);
+    if(s==10) return sceneAurora(uv,t);
+    if(s==11) return sceneInterference(uv,t);
+    if(s==12) return scenePhase(uv,t);
+    if(s==13) return sceneLattice(uv,t);
+    if(s==14) return sceneRipple(uv,t);
+    if(s==15) return sceneWarp(uv,t);
+    if(s==16) return sceneContour(uv,t);
+    if(s==17) return sceneTunnelV2(uv,t);
+    if(s==18) return sceneRaveLasers(uv,t);
+    if(s==19) return sceneFractalBloom(uv,t);
+    if(s==20) return sceneHelixBloom(uv,t);
+    if(s==21) return sceneHaloBloom(uv,t);
+    if(s==22) return scenePrismBloom(uv,t);
+    if(s==23) return sceneFractTunnel(uv,t);
+    return sceneFrostShards(uv,t);
+  }
+  vec3 getScene(int s, vec2 uv, float t){
+    return getSceneBase(s, uv, t);
+  }
+
+  void main(){
+    vec2 uv = (gl_FragCoord.xy*2.0 - u_res) / u_res.y;
+    float t = u_time * u_speed;              // motion speed is set per-look
+    uv *= (1.0 - 0.012*u_energy);            // barely-there breathing, not an in/out pump
+    vec3 col;
+    if(u_sceneFlow > 0.5 && u_blend > 0.002 && isFlowFamily(u_sceneA) && isFlowFamily(u_sceneB)){
+      vec4 a0, b0, c0, a1, b1, c1;
+      flowFamilyPreset(u_sceneA, a0, b0, c0);
+      flowFamilyPreset(u_sceneB, a1, b1, c1);
+      vec3 flowCol = sceneFlowMorph(uv, t, mix(a0, a1, u_blend), mix(b0, b1, u_blend), mix(c0, c1, u_blend));
+      vec3 fromCol = getSceneBase(u_sceneA, uv, t);
+      vec3 toCol = getSceneBase(u_sceneB, uv, t);
+      float enterFlow = smoothstep(0.08, 0.24, u_blend);
+      float exitFlow = smoothstep(0.76, 0.97, u_blend);
+      col = mix(fromCol, flowCol, enterFlow);
+      col = mix(col, toCol, exitFlow);
+    }else{
+      col = getScene(u_sceneA, uv, t);
+      if(u_blend > 0.002){ col = mix(col, getScene(u_sceneB, uv, t), u_blend); }  // 2nd scene only during a crossfade
+    }
+    col = neonGrade(col);
+    col *= 0.96 + 0.18*u_energy;             // brighter neon mids without full-screen white
+    fragColor = vec4(max(col, 0.0), 1.0);
+  }`;
+const BRIGHT_FRAG = `#version 300 es
+  precision highp float;
+  in vec2 v_uv; out vec4 o;
+  uniform sampler2D u_tex;
+  void main(){
+    vec3 c = texture(u_tex, v_uv).rgb;
+    float l = max(c.r, max(c.g, c.b));
+    float k = smoothstep(0.56, 0.94, l);
+    o = vec4(c*k, 1.0);
+  }`;
+
+const BLUR_FRAG = `#version 300 es
+  precision highp float;
+  in vec2 v_uv; out vec4 o;
+  uniform sampler2D u_tex;
+  uniform vec2 u_dir;
+  void main(){
+    float w0=0.227, w1=0.194, w2=0.121, w3=0.054, w4=0.016;
+    vec3 s = texture(u_tex, v_uv).rgb * w0;
+    s += texture(u_tex, v_uv + u_dir*1.0).rgb * w1;
+    s += texture(u_tex, v_uv - u_dir*1.0).rgb * w1;
+    s += texture(u_tex, v_uv + u_dir*2.0).rgb * w2;
+    s += texture(u_tex, v_uv - u_dir*2.0).rgb * w2;
+    s += texture(u_tex, v_uv + u_dir*3.0).rgb * w3;
+    s += texture(u_tex, v_uv - u_dir*3.0).rgb * w3;
+    s += texture(u_tex, v_uv + u_dir*4.0).rgb * w4;
+    s += texture(u_tex, v_uv - u_dir*4.0).rgb * w4;
+    o = vec4(s, 1.0);
+  }`;
+
+const COMP_FRAG = `#version 300 es
+  precision highp float;
+  in vec2 v_uv; out vec4 fragColor;
+  uniform sampler2D u_scene;
+  uniform sampler2D u_bloom;
+  uniform sampler2D u_logoMask;
+  uniform vec2  u_res;
+  uniform float u_time;
+  uniform float u_grit;
+  uniform float u_energy;
+  uniform float u_sharp;      // unsharp-mask amount
+  uniform float u_bloomAmt;   // bloom intensity
+  uniform float u_sat;        // saturation
+  uniform float u_contrast;   // contrast
+  uniform float u_black;      // black crush / floor lift
+  uniform float u_bands;      // posterize bands (<=1 = off)
+  uniform float u_edge;       // outline / edge overlay
+  uniform float u_ca;         // chromatic aberration scale
+  uniform float u_vig;        // vignette strength
+  uniform float u_strobe;     // white strobe on high energy
+  uniform float u_flash;      // manual performance strobe (0..cap) — global white glow overlay
+  uniform float u_micReactive;
+  uniform float u_logoOn;
+  uniform float u_logoOpacity;
+  uniform vec2  u_logoCenter;
+  uniform vec2  u_logoHalf;
+  uniform vec2  u_logoMaskRes;
+  uniform float u_gamma;      // Scene Lab (default 0.88)
+  uniform float u_exposure;   // Scene Lab (default 1.0)
+  float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898,78.233)))*43758.5453); }
+  float luma(vec3 c){ return dot(c, vec3(0.2126,0.7152,0.0722)); }
+  void main(){
+    vec2 uv = v_uv;
+    vec2 d = uv - 0.5;
+    vec2 texel = 1.0 / u_res;
+    vec3 sceneC = texture(u_scene, uv).rgb;
+    vec3 sRt = texture(u_scene, uv + vec2(texel.x, 0.0)).rgb;
+    vec3 sLf = texture(u_scene, uv - vec2(texel.x, 0.0)).rgb;
+    vec3 sUp = texture(u_scene, uv + vec2(0.0, texel.y)).rgb;
+    vec3 sDn = texture(u_scene, uv - vec2(0.0, texel.y)).rgb;
+    // unsharp mask -> crisper image
+    vec3 sharp = max(sceneC * 1.72 - (sRt + sLf + sUp + sDn) * 0.18, 0.0);
+    float ca = (0.0011 + 0.0022*u_energy) * (0.24 + length(d)) * u_ca;
+    vec3 col;
+    col.r = mix(sceneC.r, sharp.r, u_sharp) + (texture(u_scene, uv + d*ca).r - sceneC.r) * 0.5;
+    col.g = mix(sceneC.g, sharp.g, u_sharp);
+    col.b = mix(sceneC.b, sharp.b, u_sharp) + (texture(u_scene, uv - d*ca).b - sceneC.b) * 0.5;
+    float micMix = clamp(u_micReactive, 0.0, 1.0);
+    float bloomLimiter = mix(1.0, 0.68, micMix);
+    float strobeLimiter = mix(1.0, 0.34, micMix);
+    float strobeEnergy = mix(u_energy, min(u_energy, 0.92), micMix);
+    // bloom
+    col += texture(u_bloom, uv).rgb * (u_bloomAmt + 0.14*u_energy) * bloomLimiter;
+    // edge / outline (Laplacian on luma) — crisp graphic linework, kept sharp by adding after bloom
+    float lap = abs(4.0*luma(sceneC) - (luma(sRt)+luma(sLf)+luma(sUp)+luma(sDn)));
+    float edge = clamp(lap * 7.0, 0.0, 1.0);
+    col += vec3(edge) * u_edge;
+    // vignette (per-look strength)
+    float vig = smoothstep(1.18, 0.24, length(d)*1.30);
+    col *= mix(1.0, vig, clamp(u_vig, 0.0, 1.4));
+    // grit: scanlines + grain
+    float scan = 0.92 + 0.08*sin(uv.y*u_res.y*1.4);
+    col *= mix(1.0, scan, u_grit*0.6);
+    col += (hash(uv*u_res + fract(u_time)) * 2.0 - 1.0) * u_grit * 0.07;
+    // grade: saturation -> black crush -> contrast
+    float lum = luma(col);
+    col = mix(vec3(lum), col, u_sat);
+    col = max(col - u_black, 0.0) / max(1.0 - u_black, 0.001);
+    col = max((col - 0.5) * u_contrast + 0.5, 0.0);
+    // posterize into colour bands (graphic / screen-print look)
+    if(u_bands > 1.5){ col = floor(col * u_bands + 0.5) / u_bands; }
+    // strobe flash on energy peaks
+    col = mix(col, vec3(1.0), u_strobe * strobeLimiter * smoothstep(0.90, 1.0, strobeEnergy));
+
+    // ---- KRL clear-glass refraction (bends the live visuals through the letters) ----
+    if(u_logoOn > 0.5 && u_logoOpacity > 0.001){
+      vec2 luv = (uv - u_logoCenter) / (2.0 * u_logoHalf) + 0.5;
+      if(luv.x > 0.0 && luv.x < 1.0 && luv.y > 0.0 && luv.y < 1.0){
+        vec2 mtex = 1.0 / max(u_logoMaskRes, vec2(1.0));
+        float k = 2.2;                                   // wider stencil -> softer, lens-like
+        float cov = texture(u_logoMask, luv).a;
+        float lx = texture(u_logoMask, luv - vec2(mtex.x*k, 0.0)).a;
+        float rx = texture(u_logoMask, luv + vec2(mtex.x*k, 0.0)).a;
+        float dn = texture(u_logoMask, luv - vec2(0.0, mtex.y*k)).a;
+        float up = texture(u_logoMask, luv + vec2(0.0, mtex.y*k)).a;
+        vec2 grad = vec2(rx - lx, up - dn);
+        vec2 off = -grad * 0.06;                         // refraction strength
+        vec3 glass;
+        glass.r = texture(u_scene, uv + off*1.12).r;     // chromatic dispersion through glass
+        glass.g = texture(u_scene, uv + off      ).g;
+        glass.b = texture(u_scene, uv + off*0.88).b;
+        glass += texture(u_bloom, uv + off).rgb * 1.1;
+        float ge = clamp(length(grad) * 5.0, 0.0, 1.0);
+        glass += vec3(1.0) * ge * 0.55;                  // bright refracting rim
+        float spec = pow(max(0.0, dot(normalize(grad + vec2(0.0,1e-4)), normalize(vec2(-0.55,0.62)))), 4.0);
+        glass += vec3(1.0) * spec * cov * 0.35;          // top-left specular streak
+        glass = glass * 1.04 + 0.02;
+        col = mix(col, glass, cov * u_logoOpacity);
+      }
+    }
+
+    col *= u_exposure;
+    col = col / (1.0 + col * mix(0.25, 0.38, micMix));   // stronger shoulder under mic peaks
+    col = pow(max(col, 0.0), vec3(u_gamma));
+    // manual performance strobe — applied last so it covers every scene AND the logo.
+    // Hard-capped (never a solid-white washout that blinds the room); it's a glow lift, not a flash-bang.
+    col = mix(col, vec3(1.0), clamp(u_flash, 0.0, 0.55));
+    fragColor = vec4(col, 1.0);
+  }`;
+function sh(type, src){
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    if(!gl.getShaderParameter(s, gl.COMPILE_STATUS)){
+      console.error('Shader error:', gl.getShaderInfoLog(s), '\n', src);
+      throw new Error(gl.getShaderInfoLog(s));
+    }
+    return s;
+  }
+  function fragCompat(src, outName){
+    if(isWebGL2) return src;
+    return src
+      .replace(/^#version 300 es\s*/, '')
+      .replace('in vec2 v_uv;', 'varying vec2 v_uv;')
+      .replace(`out vec4 ${outName};`, '')
+      .replace(/\btexture\(/g, 'texture2D(')
+      .replace(new RegExp(`\\b${outName}\\b`, 'g'), 'gl_FragColor');
+  }
+  function prog(fragSrc, outName){
+    const p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fragCompat(fragSrc, outName)));
+    gl.linkProgram(p);
+    if(!gl.getProgramParameter(p, gl.LINK_STATUS)){
+      console.error('Link error:', gl.getProgramInfoLog(p));
+      throw new Error(gl.getProgramInfoLog(p));
+    }
+    // cache uniform locations lazily
+    p._u = {};
+    p.u = function(name){
+      if(!(name in p._u)) p._u[name] = gl.getUniformLocation(p, name);
+      return p._u[name];
+    };
+    return p;
+  }
+
+  let sceneProg, brightProg, blurProg, compProg;
+  try{
+    sceneProg  = prog(SCENE_FRAG, 'fragColor');
+    brightProg = prog(BRIGHT_FRAG, 'o');
+    blurProg   = prog(BLUR_FRAG, 'o');
+    compProg   = prog(COMP_FRAG, 'fragColor');
+  }catch(e){
+    fatal.textContent = 'Visual engine failed to start: ' + e.message;
+    fatal.style.display = 'grid';
+    return;
+  }
+
+const PALETTES = [
+    { name:'electric blue', c0:[0.05,0.08,0.22], c1:[0.10,0.30,0.88], c2:[0.00,0.92,1.00], c3:[0.72,0.24,1.00] },
+    { name:'violet rave',   c0:[0.10,0.04,0.22], c1:[0.38,0.08,0.86], c2:[1.00,0.18,0.96], c3:[0.08,0.88,1.00] },
+    { name:'neon ember',    c0:[0.14,0.04,0.04], c1:[0.74,0.12,0.02], c2:[1.00,0.56,0.04], c3:[1.00,0.10,0.62] },
+    { name:'woods neon',    c0:[0.05,0.10,0.05], c1:[0.16,0.54,0.12], c2:[1.00,0.76,0.12], c3:[0.14,1.00,0.46] },
+    { name:'cyan glow',     c0:[0.04,0.10,0.16], c1:[0.04,0.52,0.66], c2:[0.10,0.98,1.00], c3:[0.24,0.26,1.00] },
+    { name:'afterhours',    c0:[0.12,0.03,0.16], c1:[0.56,0.06,0.42], c2:[1.00,0.14,0.66], c3:[0.26,0.22,1.00] },
+    { name:'laser lime',    c0:[0.07,0.12,0.03], c1:[0.24,0.62,0.03], c2:[0.92,1.00,0.06], c3:[0.00,1.00,0.78] },
+    { name:'teal pulse',    c0:[0.04,0.10,0.12], c1:[0.04,0.42,0.46], c2:[0.04,1.00,0.82], c3:[0.66,0.18,1.00] },
+    { name:'hot coral',     c0:[0.14,0.05,0.04], c1:[0.72,0.16,0.08], c2:[1.00,0.48,0.20], c3:[1.00,0.12,0.86] },
+    { name:'red velvet',    c0:[0.12,0.03,0.06], c1:[0.58,0.04,0.18], c2:[1.00,0.12,0.30], c3:[0.94,0.06,1.00] },
+    { name:'pink static',   c0:[0.12,0.04,0.12], c1:[0.58,0.08,0.42], c2:[1.00,0.26,0.86], c3:[0.06,0.96,1.00] },
+    { name:'deep sea neon', c0:[0.03,0.08,0.18], c1:[0.04,0.28,0.56], c2:[0.04,0.82,1.00], c3:[0.00,1.00,0.82] },
+    { name:'ice laser',     c0:[0.06,0.10,0.16], c1:[0.18,0.40,0.60], c2:[0.60,0.92,1.00], c3:[0.86,0.28,1.00] },
+    { name:'ultraviolet',   c0:[0.08,0.03,0.20], c1:[0.30,0.10,0.76], c2:[0.66,0.24,1.00], c3:[0.12,0.72,1.00] },
+    { name:'acid magenta',  c0:[0.12,0.02,0.14], c1:[0.66,0.04,0.52], c2:[1.00,0.10,0.90], c3:[0.40,1.00,0.20] },
+    { name:'velvet rose',   c0:[0.14,0.03,0.14], c1:[0.98,0.33,0.78], c2:[0.89,0.22,0.54], c3:[0.73,0.11,0.45] },
+    { name:'plasma gold',   c0:[0.14,0.06,0.02], c1:[0.80,0.30,0.02], c2:[1.00,0.84,0.08], c3:[1.00,0.16,0.72] },
+    { name:'toxic spring',  c0:[0.04,0.12,0.06], c1:[0.20,0.70,0.10], c2:[0.66,1.00,0.04], c3:[0.04,1.00,0.96] },
+    { name:'tangerine zap', c0:[0.14,0.05,0.02], c1:[0.90,0.32,0.04], c2:[1.00,0.62,0.10], c3:[0.10,0.92,1.00] },
+    { name:'vapor mint',    c0:[0.03,0.12,0.12], c1:[0.06,0.62,0.58], c2:[0.30,1.00,0.84], c3:[1.00,0.30,0.92] },
+    { name:'solar flare',   c0:[0.14,0.03,0.05], c1:[0.84,0.10,0.22], c2:[1.00,0.42,0.10], c3:[1.00,0.92,0.16] },
+    { name:'instagram heat', c0:[0.16,0.06,0.26], c1:[0.51,0.23,0.71], c2:[0.99,0.11,0.11], c3:[0.99,0.69,0.27] },
+    { name:'racker',        c0:[0.22,0.00,0.02], c1:[0.92,0.00,0.00], c2:[0.58,0.00,0.54], c3:[0.20,0.00,0.99] },
+  ];
+
+  /* ============================================================
+     STANDALONE ENGINE  (single selected scene + real bloom/grade)
+     Mirrors the 5-pass pipeline used by index.html so the preview
+     is identical to the live show engine.
+     ============================================================ */
+  let fullTriVao = null, fullTriBuffer = null;
+  if(isWebGL2){ fullTriVao = gl.createVertexArray(); }
+  else{
+    fullTriBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, fullTriBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 3,-1, -1,3]), gl.STATIC_DRAW);
+  }
+  function makeTarget(w, h){
+    const tex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const fbo = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    return { tex, fbo, w, h };
+  }
+  // 1x1 stand-in so the compositor's logo sampler is always complete (logo is off in the lab).
+  const dummyTex = gl.createTexture();
+  gl.bindTexture(gl.TEXTURE_2D, dummyTex);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0,0,0,0]));
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+  const MAX_RENDER_W = 1280;
+  let RW=2, RH=2, BW=1, BH=1, baseW=2, baseH=2;
+  let renderScale = 1.0;             // Performance > Render scale (per scene)
+  let sceneT, bloomA, bloomB;
+  function allocTargets(){
+    [sceneT,bloomA,bloomB].forEach(t=>{ if(t){ gl.deleteTexture(t.tex); gl.deleteFramebuffer(t.fbo); } });
+    sceneT = makeTarget(RW, RH); bloomA = makeTarget(BW, BH); bloomB = makeTarget(BW, BH);
+  }
+  function applySize(){
+    RW = Math.max(2, Math.round(baseW * renderScale));
+    RH = Math.max(2, Math.round(baseH * renderScale));
+    BW = Math.max(1, Math.round(RW/4)); BH = Math.max(1, Math.round(RH/4));
+    cvs.width = RW; cvs.height = RH; cvs.style.width='100%'; cvs.style.height='100%';
+    allocTargets();
+  }
+  function resize(){
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.0);
+    let w = Math.round(Math.min(window.innerWidth * dpr, MAX_RENDER_W));
+    let h = Math.round(w * (window.innerHeight / window.innerWidth));
+    baseW = Math.max(2, w); baseH = Math.max(2, h);
+    applySize();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  function drawFull(program){
+    if(isWebGL2){ gl.bindVertexArray(fullTriVao); gl.drawArrays(gl.TRIANGLES, 0, 3); return; }
+    if(program._aPos == null) program._aPos = gl.getAttribLocation(program, 'a_pos');
+    gl.bindBuffer(gl.ARRAY_BUFFER, fullTriBuffer);
+    gl.enableVertexAttribArray(program._aPos);
+    gl.vertexAttribPointer(program._aPos, 2, gl.FLOAT, false, 0, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  const SCENE_NAMES = ['tunnel','kaleido','plasma','grid','prism','ribbons','pulse','lasers','smoke','laser haze','aurora','interference','phase','lattice','ripple','warp','contour','tunnel v2','rave lasers','fractal bloom','helix bloom','halo bloom','prism bloom','fract tunnel','frost shards'];
+
+  /* ============================================================
+     VISUAL MAKER  --  generic scene-config system
+     ------------------------------------------------------------
+     Every control is described by a *param descriptor*:
+       { key, label, cat, type:'range'|'toggle', min, max, step, def, bind }
+     where bind routes the value into the engine:
+       {t:'A'|'B'|'C', i:0..3} -> packed vec4 uniform u_sceneParamsA/B/C[i]
+       {t:'u',  name}          -> a float uniform on the scene program
+       {t:'post', name}        -> a float uniform on the compositor program
+       {t:'eng', name}         -> a JS engine value (render scale, audio knobs)
+
+     SHARED_PARAMS apply to EVERY scene (post / colour / audio / perf).
+     SCENE_SCHEMAS[idx] adds the deep, per-scene shader params.
+     ---> HOW TO ADD A NEW SCENE:  see the <details> help panel in the UI,
+          or the addendum comment at the bottom of this file.
+     ============================================================ */
+  const CAT_ORDER = ['Motion','Geometry','Glow / Bloom','Color','Audio','Performance'];
+
+  const SHARED_PARAMS = [
+    {key:'bloom',    label:'Bloom amount',       cat:'Glow / Bloom', type:'range', min:0,   max:2.5, step:0.01, def:0.64, bind:{t:'post',name:'u_bloomAmt'}},
+    {key:'edge',     label:'Edge brightness',    cat:'Glow / Bloom', type:'range', min:0,   max:1.5, step:0.01, def:0.0,  bind:{t:'post',name:'u_edge'}},
+    {key:'sharp',    label:'Sharpen',            cat:'Glow / Bloom', type:'range', min:0,   max:1,   step:0.01, def:0.34, bind:{t:'post',name:'u_sharp'}},
+    {key:'contrast', label:'Contrast',           cat:'Glow / Bloom', type:'range', min:0.5, max:2,   step:0.01, def:1.05, bind:{t:'post',name:'u_contrast'}},
+    {key:'sat',      label:'Saturation',         cat:'Glow / Bloom', type:'range', min:0,   max:2,   step:0.01, def:1.34, bind:{t:'post',name:'u_sat'}},
+    {key:'gamma',    label:'Gamma',              cat:'Glow / Bloom', type:'range', min:0.5, max:1.4, step:0.01, def:0.88, bind:{t:'post',name:'u_gamma'}},
+    {key:'exposure', label:'Exposure',           cat:'Glow / Bloom', type:'range', min:0.4, max:2,   step:0.01, def:1.0,  bind:{t:'post',name:'u_exposure'}},
+    {key:'vig',      label:'Vignette',           cat:'Glow / Bloom', type:'range', min:0,   max:1.4, step:0.01, def:1.0,  bind:{t:'post',name:'u_vig'}},
+    {key:'ca',       label:'RGB split',          cat:'Glow / Bloom', type:'range', min:0,   max:3,   step:0.01, def:1.0,  bind:{t:'post',name:'u_ca'}},
+    {key:'hueOffset',   label:'Hue offset',      cat:'Color', type:'range', min:-0.5, max:0.5, step:0.005, def:0.0, bind:{t:'u',name:'u_hueOffset'}},
+    {key:'colorCycle',  label:'Colour cycle speed', cat:'Color', type:'range', min:-0.3, max:0.3, step:0.002, def:0.0, bind:{t:'u',name:'u_colorCycle'}},
+    {key:'black',    label:'Background darkness',cat:'Color', type:'range', min:0, max:0.4, step:0.005, def:0.0, bind:{t:'post',name:'u_black'}},
+    {key:'bands',    label:'Posterize bands',    cat:'Color', type:'range', min:0, max:8, step:1, def:0, bind:{t:'post',name:'u_bands'}},
+    {key:'audMic',   label:'Mic influence',      cat:'Audio', type:'range', min:0, max:2, step:0.01, def:1.0, bind:{t:'eng',name:'audMic'}},
+    {key:'audKick',  label:'Kick sensitivity',   cat:'Audio', type:'range', min:0, max:3, step:0.01, def:1.0, bind:{t:'eng',name:'audKick'}},
+    {key:'audAvg',   label:'Average sensitivity',cat:'Audio', type:'range', min:0, max:3, step:0.01, def:1.0, bind:{t:'eng',name:'audAvg'}},
+    {key:'audDrop',  label:'Drop response',      cat:'Audio', type:'range', min:0, max:2, step:0.01, def:1.0, bind:{t:'eng',name:'audDrop'}},
+    {key:'audSmooth',label:'Smoothness',         cat:'Audio', type:'range', min:0, max:0.98, step:0.01, def:0.80, bind:{t:'eng',name:'audSmooth'}},
+    {key:'strobe',   label:'Strobe on peaks',    cat:'Audio', type:'range', min:0, max:0.6, step:0.01, def:0.0, bind:{t:'post',name:'u_strobe'}},
+    {key:'grit',     label:'Grain / grit',       cat:'Performance', type:'range', min:0, max:1, step:0.01, def:0.18, bind:{t:'post',name:'u_grit'}},
+    {key:'renderScale', label:'Render scale',    cat:'Performance', type:'range', min:0.34, max:2.0, step:0.01, def:1.0, bind:{t:'eng',name:'renderScale'}},
+  ];
+
+  const SCENE_SCHEMAS = {
+    17:{ params:[
+      {key:'speed', label:'Speed',        cat:'Motion',   type:'range', min:0,   max:3, step:0.01, def:1, bind:{t:'A',i:0}},
+      {key:'zoom',  label:'Zoom',         cat:'Motion',   type:'range', min:0.3, max:3, step:0.01, def:1, bind:{t:'B',i:2}},
+      {key:'twist', label:'Twist / warp', cat:'Geometry', type:'range', min:0,   max:3, step:0.01, def:1, bind:{t:'A',i:1}},
+      {key:'rings', label:'Ring density', cat:'Geometry', type:'range', min:0.2, max:3, step:0.01, def:1, bind:{t:'A',i:2}},
+      {key:'spokes',label:'Spoke count',  cat:'Geometry', type:'range', min:0.2, max:3, step:0.01, def:1, bind:{t:'A',i:3}},
+      {key:'glow',  label:'Glow intensity',cat:'Glow / Bloom', type:'range', min:0, max:3, step:0.01, def:1, bind:{t:'B',i:0}},
+      {key:'core',  label:'Core brightness',cat:'Glow / Bloom', type:'range', min:0, max:3, step:0.01, def:1, bind:{t:'B',i:1}},
+      {key:'aud',   label:'Audio influence',cat:'Audio', type:'range', min:0, max:2, step:0.01, def:0, bind:{t:'B',i:3}},
+    ]},
+    2:{ params:[
+      {key:'speed', label:'Speed',        cat:'Motion',   type:'range', min:0,   max:3, step:0.01, def:1, bind:{t:'A',i:0}},
+      {key:'scale', label:'Scale / zoom', cat:'Geometry', type:'range', min:0.3, max:3, step:0.01, def:1, bind:{t:'A',i:1}},
+      {key:'warp',  label:'Warp amount',  cat:'Geometry', type:'range', min:0,   max:3, step:0.01, def:1, bind:{t:'A',i:2}},
+      {key:'fden',  label:'Filament density',cat:'Geometry', type:'range', min:0.3, max:3, step:0.01, def:1, bind:{t:'A',i:3}},
+      {key:'glow',  label:'Glow intensity',cat:'Glow / Bloom', type:'range', min:0, max:3, step:0.01, def:1, bind:{t:'B',i:0}},
+      {key:'pocket',label:'Pocket threshold',cat:'Geometry', type:'range', min:0.4, max:1.6, step:0.01, def:1, bind:{t:'B',i:1}},
+      {key:'core',  label:'Core intensity',cat:'Glow / Bloom', type:'range', min:0, max:3, step:0.01, def:1, bind:{t:'B',i:2}},
+      {key:'aud',   label:'Audio influence',cat:'Audio', type:'range', min:0, max:2, step:0.01, def:0, bind:{t:'B',i:3}},
+    ]},
+    18:{ params:[
+      {key:'speed', label:'Speed',        cat:'Motion',   type:'range', min:0,   max:3, step:0.01, def:1, bind:{t:'A',i:0}},
+      {key:'beams', label:'Beam count',   cat:'Geometry', type:'range', min:0.4, max:2.5, step:0.01, def:1, bind:{t:'A',i:1}},
+      {key:'sharp2',label:'Beam sharpness',cat:'Glow / Bloom', type:'range', min:0.4, max:2, step:0.01, def:1, bind:{t:'A',i:2}},
+      {key:'haze',  label:'Haze amount',  cat:'Geometry', type:'range', min:0, max:2.5, step:0.01, def:1, bind:{t:'A',i:3}},
+      {key:'glow',  label:'Glow intensity',cat:'Glow / Bloom', type:'range', min:0, max:3, step:0.01, def:1, bind:{t:'B',i:0}},
+      {key:'aud',   label:'Audio influence',cat:'Audio', type:'range', min:0, max:2, step:0.01, def:0, bind:{t:'B',i:1}},
+      {key:'geo',   label:'Geo detail',   cat:'Geometry', type:'range', min:0, max:2.5, step:0.01, def:1, bind:{t:'B',i:2}},
+      {key:'crowd', label:'Crowd shadow', cat:'Geometry', type:'range', min:0, max:2, step:0.01, def:1, bind:{t:'B',i:3}},
+    ]},
+    24:{ params:[
+      {key:'speed', label:'Speed',        cat:'Motion',   type:'range', min:0,   max:3, step:0.01, def:1, bind:{t:'A',i:0}},
+      {key:'zoom',  label:'Zoom',         cat:'Motion',   type:'range', min:0.3, max:3, step:0.01, def:1, bind:{t:'A',i:1}},
+      {key:'twist', label:'Twist amount', cat:'Geometry', type:'range', min:0,   max:3, step:0.01, def:1, bind:{t:'A',i:2}},
+      {key:'glow',  label:'Glow intensity',cat:'Glow / Bloom', type:'range', min:0, max:3, step:0.01, def:1, bind:{t:'B',i:0}},
+      {key:'core',  label:'Core intensity',cat:'Glow / Bloom', type:'range', min:0, max:3, step:0.01, def:1, bind:{t:'B',i:1}},
+      {key:'shimmer',label:'Shimmer',     cat:'Motion',   type:'range', min:0, max:2, step:0.01, def:1, bind:{t:'B',i:2}},
+      {key:'steps', label:'Raymarch steps',cat:'Performance', type:'range', min:8, max:48, step:1, def:32, bind:{t:'A',i:3}},
+    ]},
+  };
+  const CONFIGURED = Object.keys(SCENE_SCHEMAS).map(Number).sort((a,b)=>a-b);
+
+  function sceneParams(idx){
+    const own = SCENE_SCHEMAS[idx] ? SCENE_SCHEMAS[idx].params : [];
+    return own.concat(SHARED_PARAMS);   // per-scene deep params first, then shared
+  }
+  function defaultsFor(idx){ const o={}; sceneParams(idx).forEach(p=> o[p.key]=p.def); return o; }
+
+  /* ---- live values (per scene) + preset store ---- */
+  let currentScene = 17;
+  const values = {};                          // values[idx] = { key: value }
+  function ensure(idx){ if(!values[idx]) values[idx] = defaultsFor(idx); return values[idx]; }
+  function val(idx, key){ const v = ensure(idx); return (key in v) ? v[key] : (defaultsFor(idx)[key]); }
+
+  const PRESET_KEY = 'krl-scene-lab-presets-v1';
+  // presets = { [idx]: { [name]: {values} } }
+  let presets = {};
+  try{ presets = JSON.parse(localStorage.getItem(PRESET_KEY) || '{}') || {}; }catch(_){ presets = {}; }
+  function savePresets(){ try{ localStorage.setItem(PRESET_KEY, JSON.stringify(presets)); }catch(_){ } }
+  let activePreset = {};                       // activePreset[idx] = name | '' (defaults)
+
+  /* ---- share "in show loop" flags with the live app (index.html) via its state key ---- */
+  const SHOW_STATE_KEY = 'krl-vfx-state-v1';
+  function readShowState(){ try{ return JSON.parse(localStorage.getItem(SHOW_STATE_KEY) || 'null'); }catch(_){ return null; } }
+  function sceneInLoop(idx){
+    const st = readShowState();
+    if(st && Array.isArray(st.sceneLoopEnabled) && idx < st.sceneLoopEnabled.length) return !!st.sceneLoopEnabled[idx];
+    return true;   // app default = all enabled
+  }
+  function setSceneInLoop(idx, on){
+    let st = readShowState() || {};
+    if(!Array.isArray(st.sceneLoopEnabled)) st.sceneLoopEnabled = SCENE_NAMES.map(()=>true);
+    while(st.sceneLoopEnabled.length < SCENE_NAMES.length) st.sceneLoopEnabled.push(true);
+    st.sceneLoopEnabled[idx] = !!on;
+    try{ localStorage.setItem(SHOW_STATE_KEY, JSON.stringify(st)); }catch(_){ }
+  }
+
+  /* ============================================================
+     AUDIO  --  optional mic drives u_energy (E). Knobs are per-scene.
+     ============================================================ */
+  let micOn = false, audioCtx = null, analyser = null, freqData = null;
+  let E = 0, Eavg = 0;
+  async function startMic(){
+    try{
+      const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 512; analyser.smoothingTimeConstant = 0.6;
+      freqData = new Uint8Array(analyser.frequencyBinCount);
+      src.connect(analyser);
+      micOn = true; flash('mic on'); return true;
+    }catch(e){ micOn = false; flash('mic blocked'); return false; }
+  }
+  function computeEnergy(){
+    if(!micOn || !analyser){ E *= 0.90; return E; }
+    analyser.getByteFrequencyData(freqData);
+    const n = freqData.length;
+    let low = 0; const lowN = Math.max(1, Math.floor(n*0.08));
+    for(let i=0;i<lowN;i++) low += freqData[i];
+    low = low / lowN / 255;
+    let full = 0; for(let i=0;i<n;i++) full += freqData[i]; full = full / n / 255;
+    const kick = val(currentScene,'audKick') * low;
+    const avg  = val(currentScene,'audAvg')  * full;
+    Eavg = Eavg*0.98 + avg*0.02;
+    let raw = (kick*0.7 + avg*0.5) * val(currentScene,'audMic');
+    raw += Math.max(0, avg - Eavg) * val(currentScene,'audDrop') * 1.5;
+    const sm = Math.min(0.98, Math.max(0, val(currentScene,'audSmooth')));
+    E = E*sm + raw*(1-sm);
+    return Math.max(0, Math.min(1.4, E));
+  }
+
+  /* ============================================================
+     COLORWAYS
+     ============================================================ */
+  let colorwayIdx = 0;
+  let cur = PALETTES[0];
+  function setColorway(i){ colorwayIdx = ((i % PALETTES.length)+PALETTES.length)%PALETTES.length; cur = PALETTES[colorwayIdx]; }
+
+  /* ============================================================
+     PER-FRAME UNIFORM UPLOAD  (the bridge from config -> shaders)
+     ============================================================ */
+  function uploadSceneUniforms(){
+    const idx = currentScene;
+    const A=[0,0,0,0], B=[0,0,0,0], C=[0,0,0,0];
+    gl.useProgram(sceneProg);
+    sceneParams(idx).forEach(p=>{
+      const value = val(idx, p.key);
+      const b = p.bind;
+      if(b.t==='A') A[b.i] = value;
+      else if(b.t==='B') B[b.i] = value;
+      else if(b.t==='C') C[b.i] = value;
+      else if(b.t==='u'){ const loc = sceneProg.u(b.name); if(loc) gl.uniform1f(loc, value); }
+    });
+    gl.uniform4f(sceneProg.u('u_sceneParamsA'), A[0],A[1],A[2],A[3]);
+    gl.uniform4f(sceneProg.u('u_sceneParamsB'), B[0],B[1],B[2],B[3]);
+    gl.uniform4f(sceneProg.u('u_sceneParamsC'), C[0],C[1],C[2],C[3]);
+  }
+  function uploadPostUniforms(clock){
+    const idx = currentScene;
+    // fixed (not exposed) look constants
+    gl.uniform1f(compProg.u('u_micReactive'), micOn ? 1.0 : 0.0);
+    gl.uniform1f(compProg.u('u_logoOn'), 0.0);
+    gl.uniform1f(compProg.u('u_logoOpacity'), 0.0);
+    if(compProg.u('u_logoMaskRes')) gl.uniform2f(compProg.u('u_logoMaskRes'), 1, 1);
+    // configurable compositor uniforms (from SHARED_PARAMS post binds)
+    SHARED_PARAMS.forEach(p=>{
+      if(p.bind.t==='post'){ const loc = compProg.u(p.bind.name); if(loc) gl.uniform1f(loc, val(idx, p.key)); }
+    });
+  }
+
+  /* ============================================================
+     RENDER LOOP  (identical 5-pass pipeline to index.html)
+     ============================================================ */
+  let sceneClock = 0, clock = 0, last = performance.now();
+  const BASE_SPEED = 0.6;   // matches the FLOW look's motion rate
+  function render(nowMs){
+    requestAnimationFrame(render);
+    const dt = Math.min(0.05, Math.max(0, (nowMs - last) * 0.001)); last = nowMs;
+    sceneClock += dt * BASE_SPEED; clock += dt;
+    E = computeEnergy();
+
+    // PASS 1: scene -> sceneT
+    gl.useProgram(sceneProg);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, sceneT.fbo);
+    gl.viewport(0,0,RW,RH);
+    gl.uniform2f(sceneProg.u('u_res'), RW, RH);
+    gl.uniform1f(sceneProg.u('u_time'), sceneClock);
+    gl.uniform1f(sceneProg.u('u_energy'), E);
+    gl.uniform1i(sceneProg.u('u_sceneA'), currentScene);
+    gl.uniform1i(sceneProg.u('u_sceneB'), currentScene);
+    gl.uniform1f(sceneProg.u('u_blend'), 0.0);
+    gl.uniform1f(sceneProg.u('u_speed'), 1.0);
+    gl.uniform1f(sceneProg.u('u_sceneFlow'), 0.0);
+    gl.uniform3fv(sceneProg.u('u_c0'), cur.c0);
+    gl.uniform3fv(sceneProg.u('u_c1'), cur.c1);
+    gl.uniform3fv(sceneProg.u('u_c2'), cur.c2);
+    gl.uniform3fv(sceneProg.u('u_c3'), cur.c3);
+    uploadSceneUniforms();
+    drawFull(sceneProg);
+
+    // PASS 2: bright extract -> bloomA
+    gl.useProgram(brightProg);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, bloomA.fbo);
+    gl.viewport(0,0,BW,BH);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, sceneT.tex);
+    gl.uniform1i(brightProg.u('u_tex'), 0);
+    drawFull(brightProg);
+
+    // PASS 3: blur H -> bloomB
+    gl.useProgram(blurProg);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, bloomB.fbo);
+    gl.viewport(0,0,BW,BH);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
+    gl.uniform1i(blurProg.u('u_tex'), 0);
+    gl.uniform2f(blurProg.u('u_dir'), 0.85/BW, 0.0);
+    drawFull(blurProg);
+
+    // PASS 4: blur V -> bloomA
+    gl.bindFramebuffer(gl.FRAMEBUFFER, bloomA.fbo);
+    gl.viewport(0,0,BW,BH);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, bloomB.tex);
+    gl.uniform2f(blurProg.u('u_dir'), 0.0, 0.85/BH);
+    drawFull(blurProg);
+
+    // PASS 5: composite -> screen
+    gl.useProgram(compProg);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0,0,RW,RH);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, sceneT.tex);
+    gl.uniform1i(compProg.u('u_scene'), 0);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, bloomA.tex);
+    gl.uniform1i(compProg.u('u_bloom'), 1);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, dummyTex);
+    if(compProg.u('u_logoMask')) gl.uniform1i(compProg.u('u_logoMask'), 2);
+    gl.uniform2f(compProg.u('u_res'), RW, RH);
+    gl.uniform1f(compProg.u('u_time'), clock);
+    gl.uniform1f(compProg.u('u_energy'), E);
+    uploadPostUniforms(clock);
+    drawFull(compProg);
+  }
+  requestAnimationFrame(render);
+
+  /* ============================================================
+     UI
+     ============================================================ */
+  const labEl   = document.getElementById('lab');
+  const bodyEl  = document.getElementById('labBody');
+  const flashEl = document.getElementById('labFlash');
+  let flashTimer = null;
+  function flash(msg){ flashEl.textContent = msg; flashEl.classList.add('show');
+    clearTimeout(flashTimer); flashTimer = setTimeout(()=>flashEl.classList.remove('show'), 1400); }
+
+  function el(tag, attrs, kids){
+    const e = document.createElement(tag);
+    if(attrs) for(const k in attrs){
+      if(k==='class') e.className = attrs[k];
+      else if(k==='text') e.textContent = attrs[k];
+      else if(k.slice(0,2)==='on') e.addEventListener(k.slice(2), attrs[k]);
+      else e.setAttribute(k, attrs[k]);
+    }
+    (kids||[]).forEach(c=> e.appendChild(typeof c==='string'? document.createTextNode(c): c));
+    return e;
+  }
+  function decimals(step){ return step>=1 ? 0 : (step>=0.1 ? 1 : (step>=0.01 ? 2 : 3)); }
+  function fmt(v, step){ return Number(v).toFixed(decimals(step)); }
+
+  const collapsed = {};   // category collapse memory
+  function buildUI(){
+    bodyEl.innerHTML = '';
+    const idx = currentScene;
+
+    // ---- scene selector ----
+    const sceneSel = el('select', {class:'labSelect', onchange:e=>{ selectScene(Number(e.target.value)); }});
+    SCENE_NAMES.forEach((nm,i)=>{
+      const star = SCENE_SCHEMAS[i] ? ' ✦' : '';
+      const o = el('option', {value:String(i)}, [nm + star]);
+      if(i===idx) o.selected = true;
+      sceneSel.appendChild(o);
+    });
+    bodyEl.appendChild(el('div',{class:'labField'},[ el('label',{text:'Scene'}), sceneSel ]));
+
+    // ---- preset selector ----
+    const presetSel = el('select', {class:'labSelect', onchange:e=>{ applyPreset(e.target.value); }});
+    presetSel.appendChild(el('option',{value:''}, ['(defaults)']));
+    const store = presets[idx] || {};
+    Object.keys(store).sort().forEach(name=>{
+      const o = el('option',{value:name},[name]); if(activePreset[idx]===name) o.selected=true; presetSel.appendChild(o);
+    });
+    bodyEl.appendChild(el('div',{class:'labField'},[ el('label',{text:'Preset'}), presetSel ]));
+
+    // ---- preset actions ----
+    bodyEl.appendChild(el('div',{class:'labBtnRow'},[
+      el('button',{class:'labBtn primary', onclick:savePreset}, ['Save preset']),
+      el('button',{class:'labBtn', onclick:duplicatePreset}, ['Duplicate']),
+      el('button',{class:'labBtn warn', onclick:resetPreset}, ['Reset preset']),
+    ]));
+    bodyEl.appendChild(el('div',{class:'labBtnRow'},[
+      el('button',{class:'labBtn', onclick:resetDefaults}, ['Reset scene defaults']),
+      el('button',{class:'labBtn', onclick:deletePreset}, ['Delete preset']),
+    ]));
+    bodyEl.appendChild(el('div',{class:'labBtnRow'},[
+      el('button',{class:'labBtn', onclick:exportPresets}, ['Export JSON']),
+      el('button',{class:'labBtn', onclick:()=>importInput.click()}, ['Import JSON']),
+    ]));
+
+    // ---- colorway + in-loop + mic ----
+    const cwSel = el('select',{class:'labSelect', onchange:e=>setColorway(Number(e.target.value))});
+    PALETTES.forEach((p,i)=>{ const o=el('option',{value:String(i)},[p.name]); if(i===colorwayIdx)o.selected=true; cwSel.appendChild(o); });
+    bodyEl.appendChild(el('div',{class:'labField'},[ el('label',{text:'Colorway (preview only)'}), cwSel ]));
+
+    const loopBtn = el('button',{class:'labToggleBtn'+(sceneInLoop(idx)?' on':''), onclick:()=>{
+      const on = !sceneInLoop(idx); setSceneInLoop(idx, on); loopBtn.classList.toggle('on', on);
+      loopBtn.textContent = on ? 'In show loop: ON' : 'In show loop: OFF';
+      flash(on ? 'added to show loop' : 'removed from show loop');
+    }}, [ sceneInLoop(idx) ? 'In show loop: ON' : 'In show loop: OFF' ]);
+    const micBtn = el('button',{class:'labToggleBtn'+(micOn?' on':''), onclick:async()=>{
+      if(!micOn){ await startMic(); } else { micOn=false; flash('mic off'); }
+      micBtn.classList.toggle('on', micOn); micBtn.textContent = micOn?'Mic: ON':'Mic: OFF';
+    }}, [ micOn?'Mic: ON':'Mic: OFF' ]);
+    const tRow = el('div',{class:'labBtnRow'},[loopBtn, micBtn]);
+    tRow.style.marginTop = '4px';
+    bodyEl.appendChild(tRow);
+
+    // ---- deep-params note ----
+    if(!SCENE_SCHEMAS[idx]){
+      bodyEl.appendChild(el('div',{class:'noParams'},
+        ['No deep params defined for "'+SCENE_NAMES[idx]+'" yet — global Glow / Colour / Audio / Performance below still apply. See "How to add a scene".']));
+    }
+
+    // ---- grouped controls ----
+    const params = sceneParams(idx);
+    CAT_ORDER.forEach(cat=>{
+      const inCat = params.filter(p=>p.cat===cat);
+      if(!inCat.length) return;
+      const isCol = collapsed[cat];
+      const bodyDiv = el('div',{class:'catBody'});
+      inCat.forEach(p=> bodyDiv.appendChild(buildControl(idx, p)));
+      const head = el('div',{class:'catHead', onclick:()=>{ collapsed[cat]=!collapsed[cat]; group.classList.toggle('collapsed'); }},
+        [ el('span',{text:cat}), el('span',{class:'caret',text:'▾'}) ]);
+      const group = el('div',{class:'catGroup'+(isCol?' collapsed':'')},[ head, bodyDiv ]);
+      bodyEl.appendChild(group);
+    });
+
+    // ---- help ----
+    bodyEl.appendChild(buildHelp());
+  }
+
+  function buildControl(idx, p){
+    const wrap = el('div',{class:'ctrl'});
+    const nameEl = el('span',{class:'ctrlName', text:p.label});
+    const valEl  = el('span',{class:'ctrlVal'});
+    wrap.appendChild(el('div',{class:'ctrlTop'},[ nameEl, valEl ]));
+    const cur = val(idx, p.key);
+    function markModified(v){ wrap.classList.toggle('modified', Math.abs(v - p.def) > 1e-6); }
+    if(p.type==='toggle'){
+      const btn = el('button',{class:'labToggleBtn'+(cur>0.5?' on':'')},[cur>0.5?'On':'Off']);
+      btn.style.width='100%';
+      valEl.textContent = cur>0.5?'on':'off';
+      btn.addEventListener('click',()=>{ const nv = val(idx,p.key)>0.5?0:1; ensure(idx)[p.key]=nv;
+        btn.classList.toggle('on',nv>0.5); btn.textContent=nv>0.5?'On':'Off'; valEl.textContent=nv>0.5?'on':'off'; markModified(nv); onParamChanged(p); });
+      wrap.appendChild(btn); markModified(cur); return wrap;
+    }
+    const rng = el('input',{type:'range', min:String(p.min), max:String(p.max), step:String(p.step)});
+    rng.value = String(cur); valEl.textContent = fmt(cur, p.step);
+    rng.addEventListener('input',()=>{ const nv = parseFloat(rng.value); ensure(idx)[p.key]=nv;
+      valEl.textContent = fmt(nv, p.step); markModified(nv); onParamChanged(p); });
+    wrap.appendChild(rng); markModified(cur); return wrap;
+  }
+
+  function onParamChanged(p){
+    if(p.bind && p.bind.t==='eng' && p.bind.name==='renderScale'){
+      renderScale = Math.max(0.34, Math.min(2.0, val(currentScene,'renderScale'))); applySize();
+    }
+    // everything else is read live in the render loop.
+  }
+
+  /* ---- actions ---- */
+  function selectScene(idx){ currentScene = idx; ensure(idx);
+    renderScale = Math.max(0.34, Math.min(2.0, val(idx,'renderScale'))); applySize(); buildUI(); }
+  function applyPreset(name){
+    const idx = currentScene;
+    if(!name){ activePreset[idx]=''; values[idx] = defaultsFor(idx); }
+    else{ const store = presets[idx]||{}; if(store[name]){ activePreset[idx]=name; values[idx] = Object.assign(defaultsFor(idx), store[name]); } }
+    renderScale = Math.max(0.34, Math.min(2.0, val(idx,'renderScale'))); applySize(); buildUI(); flash('preset: '+(name||'defaults'));
+  }
+  function savePreset(){
+    const idx = currentScene;
+    let name = activePreset[idx];
+    name = window.prompt('Save preset as:', name || (SCENE_NAMES[idx]+' custom'));
+    if(!name) return;
+    if(!presets[idx]) presets[idx] = {};
+    presets[idx][name] = Object.assign({}, ensure(idx));
+    activePreset[idx] = name; savePresets(); buildUI(); flash('saved "'+name+'"');
+  }
+  function duplicatePreset(){
+    const idx = currentScene;
+    const base = activePreset[idx] || 'preset';
+    let name = window.prompt('Duplicate current settings as:', base+' copy');
+    if(!name) return;
+    if(!presets[idx]) presets[idx] = {};
+    presets[idx][name] = Object.assign({}, ensure(idx));
+    activePreset[idx] = name; savePresets(); buildUI(); flash('duplicated to "'+name+'"');
+  }
+  function resetPreset(){
+    const idx = currentScene; const name = activePreset[idx];
+    if(name && presets[idx] && presets[idx][name]){ values[idx] = Object.assign(defaultsFor(idx), presets[idx][name]); flash('reverted to "'+name+'"'); }
+    else { values[idx] = defaultsFor(idx); flash('reset to defaults'); }
+    renderScale = Math.max(0.34, Math.min(2.0, val(idx,'renderScale'))); applySize(); buildUI();
+  }
+  function resetDefaults(){ const idx=currentScene; values[idx]=defaultsFor(idx); activePreset[idx]='';
+    renderScale = 1.0; applySize(); buildUI(); flash('scene defaults restored'); }
+  function deletePreset(){
+    const idx=currentScene; const name=activePreset[idx];
+    if(!name || !presets[idx] || !presets[idx][name]){ flash('no preset selected'); return; }
+    if(!window.confirm('Delete preset "'+name+'"?')) return;
+    delete presets[idx][name]; activePreset[idx]=''; savePresets(); buildUI(); flash('deleted "'+name+'"');
+  }
+  function exportPresets(){
+    const data = JSON.stringify({ app:'krl-scene-lab', version:1, presets }, null, 2);
+    const blob = new Blob([data], {type:'application/json'});
+    const a = el('a',{href:URL.createObjectURL(blob), download:'krl-scene-lab-presets.json'});
+    document.body.appendChild(a); a.click(); a.remove(); flash('exported presets');
+  }
+  const importInput = el('input',{type:'file', accept:'application/json,.json'});
+  importInput.style.display='none';
+  importInput.addEventListener('change', e=>{
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = ()=>{ try{
+      const obj = JSON.parse(r.result);
+      const incoming = obj && obj.presets ? obj.presets : obj;
+      if(incoming && typeof incoming==='object'){
+        for(const k in incoming){ presets[k] = Object.assign(presets[k]||{}, incoming[k]); }
+        savePresets(); buildUI(); flash('imported presets');
+      } else flash('bad file');
+    }catch(err){ flash('import failed'); } importInput.value=''; };
+    r.readAsText(f);
+  });
+  document.body.appendChild(importInput);
+
+  function buildHelp(){
+    const d = el('details',{class:'helpBox'});
+    d.appendChild(el('summary',{text:'How to add a scene'}));
+    const n = el('div',{class:'labNote'});
+    n.innerHTML =
+      '<p>1. In <code>index.html</code>, pick the scene’s shader function (e.g. <code>sceneAurora</code>) and read up to 8 deep params from the packed uniforms <code>u_sceneParamsA/B/C</code> (x,y,z,w). Keep defaults neutral so show mode is unchanged (multipliers default&nbsp;1, added effects default&nbsp;0).</p>'+
+      '<p>2. Re-run <code>gen_scene_lab.py</code> so this file picks up the shader edits, OR mirror the same edits here.</p>'+
+      '<p>3. Add a <code>SCENE_SCHEMAS[index]</code> entry: one descriptor per param with <code>bind:{t:\'A\'|\'B\'|\'C\', i:0..3}</code> matching the slot you read in the shader.</p>'+
+      '<p>Shared Glow / Colour / Audio / Performance controls are applied to every scene automatically — no work needed.</p>'+
+      '<p>Presets live in localStorage under <code>krl-scene-lab-presets-v1</code>. “In show loop” writes the app’s own <code>krl-vfx-state-v1</code> so it carries into the live show.</p>';
+    d.appendChild(n);
+    return d;
+  }
+
+  /* ---- panel open/close ---- */
+  const toggleBtn = document.getElementById('labToggle');
+  let open = true;
+  function setOpen(o){ open=o; labEl.classList.toggle('open', o); }
+  toggleBtn.addEventListener('click', ()=> setOpen(!open));
+  document.addEventListener('keydown', e=>{
+    if(e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    if(e.key==='Escape') setOpen(false);
+    else if(e.key.toLowerCase()==='l') setOpen(!open);
+  });
+
+  setColorway(0);
+  ensure(currentScene);
+  buildUI();
+  setOpen(true);
+
+  /* ============================================================
+     ADDING A SCENE (reference):
+       - Read <=8 floats from u_sceneParamsA/B/C in the scene's GLSL.
+       - Keep defaults neutral (x1 for multipliers, +0 for new effects)
+         so index.html show mode is byte-for-byte unchanged.
+       - Register SCENE_SCHEMAS[idx] with matching {t,i} binds.
+       - Shared post/colour/audio/perf params come for free.
+     ============================================================ */
+})();
+</script>
+</body>
+</html>
