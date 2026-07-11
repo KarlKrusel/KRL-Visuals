@@ -4,14 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
 <title>KRL // VFX</title>
+<link rel="preload" href="Tourner.ttf?v=20260711-assets2" as="font" type="font/ttf" crossorigin>
+<link rel="preload" href="logo.png?v=20260711-assets2" as="image" type="image/png" fetchpriority="high">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
   @font-face{
     font-family:"Tourner";
-    src:url("Tourner.ttf") format("truetype");
-    font-display:swap;
+    src:url("Tourner.ttf?v=20260711-assets2") format("truetype");
+    font-display:block;
   }
   :root{
     --energy: 0;
@@ -1151,6 +1153,8 @@
   const forceFullEngine = bootParams.get('full') === '1';
   const forceLiteEngine = bootParams.get('lite') === '1'
     || (!forceFullEngine && /\bWindows\b/i.test(navigator.userAgent || ''));
+  const ASSET_VERSION = '20260711-assets2';
+  const WOODS_LOGO_URL = `logo.png?v=${ASSET_VERSION}`;
   function showFatal(message){
     fatal.textContent = message;
     fatal.style.display = 'grid';
@@ -3833,8 +3837,10 @@
   let logoFxLastAt = -999;
   let logoFxLastW = 0, logoFxLastH = 0;
   let logoMaskDirty = true;
+  let woodsAssetReady = false;
   let woodsLogoPrepared = false;
   let woodsWarmupQueued = false;
+  let pendingWoodsLogo = false;
   let logoGlowBakeLastAt = -999;
   let lastBakedWoodsGlowKey = '';
   let woodsHiddenRefreshLastAt = -999;
@@ -4149,7 +4155,7 @@
   }
 
   function renderWoodsLogo(force = false, allowHidden = false){
-    if((!allowHidden && logoMode !== 'woods') || !logoImgBase.complete || !logoImgBase.naturalWidth || !logoImgCtx || !logoFxCtx || !logoImgGlowCtx) return;
+    if((!allowHidden && logoMode !== 'woods') || !woodsAssetReady || !logoImgBase.complete || !logoImgBase.naturalWidth || !logoImgCtx || !logoFxCtx || !logoImgGlowCtx) return;
     const sizeChanged = updateLogoCanvasSize(force);
     const paletteMix = paletteTweenProgress();
     const paletteTweening = paletteMix < 0.999;
@@ -4278,6 +4284,12 @@
   function setLogoMode(mode){
     const prevMode = logoMode;
     if(prevMode === mode) return;
+    if(mode === 'woods' && !woodsAssetReady){
+      pendingWoodsLogo = true;
+      queueWoodsLogoWarmup();
+      return;
+    }
+    if(mode === 'woods') pendingWoodsLogo = false;
     const perfEvent = startPerfEvent('logo-swap', `logo ${prevMode} -> ${mode}`, `logo fade ${LOGO_FADE_SEC.toFixed(2)}s`);
     logoMode = mode;
     if(mode !== 'outro') lastStandardLogoMode = mode;
@@ -4356,23 +4368,44 @@
     return c.toDataURL('image/png');
   }
   function setLogoAsset(src){
+    let settled = false;
+    woodsAssetReady = false;
     woodsLogoPrepared = false;
     logoMaskDirty = true;
-    logoImgBase.onload = () => {
+    const finish = () => {
+      if(settled) return;
+      settled = true;
       logoBounds = null;
       logoMaskDirty = true;
       woodsLogoPrepared = false;
+      woodsAssetReady = true;
       queueWoodsLogoWarmup();
+      if(pendingWoodsLogo && !outroActive){
+        pendingWoodsLogo = false;
+        requestAnimationFrame(() => setLogoMode('woods'));
+      }
+    };
+    const finishDecoded = () => {
+      if(logoImgBase.decode){
+        logoImgBase.decode().then(finish).catch(finish);
+      }else{
+        finish();
+      }
+    };
+    logoImgBase.onload = finishDecoded;
+    logoImgBase.onerror = () => {
+      if(!String(src).startsWith('data:')) setLogoAsset(placeholderLogo());
     };
     logoImgBase.src = src;
     if(logoImgBase.complete && logoImgBase.naturalWidth){
-      queueWoodsLogoWarmup();
+      finishDecoded();
     }
   }
   const preloadedLogo = new Image();
-  preloadedLogo.addEventListener('load', () => { setLogoAsset('logo.png'); }, { once:true });
+  preloadedLogo.decoding = 'async';
+  preloadedLogo.addEventListener('load', () => { setLogoAsset(WOODS_LOGO_URL); }, { once:true });
   preloadedLogo.addEventListener('error', () => { setLogoAsset(placeholderLogo()); }, { once:true });
-  preloadedLogo.src = 'logo.png';
+  preloadedLogo.src = WOODS_LOGO_URL;
 
   function glitch(force = false){
     if(!krlGlitchEnabled) return;
