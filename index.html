@@ -45,6 +45,7 @@
     position:fixed; inset:0;
     width:100%; height:100%;
     display:block;
+    background:#000;
     z-index:0;
   }
 
@@ -1146,10 +1147,26 @@
     || cvs.getContext('webgl', GL_CONTEXT_OPTS)
     || cvs.getContext('experimental-webgl', GL_CONTEXT_OPTS);
   const isWebGL2 = !!(gl && typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext);
+  function showFatal(message){
+    fatal.textContent = message;
+    fatal.style.display = 'grid';
+  }
+  window.addEventListener('error', (e) => {
+    if(e && e.message) showFatal('Visual engine error: ' + e.message);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const reason = e && e.reason;
+    const message = reason && reason.message ? reason.message : String(reason || 'unknown error');
+    showFatal('Visual engine error: ' + message);
+  });
   if(!gl){
-    fatal.style.display='grid';
+    showFatal('This browser did not start WebGL. Turn on hardware acceleration or try Edge/Chrome/Firefox with WebGL enabled.');
     return;
   }
+  gl.clearColor(0, 0, 0, 1);
+  gl.disable(gl.DEPTH_TEST);
+  gl.disable(gl.STENCIL_TEST);
+  gl.disable(gl.BLEND);
 
   /* ============================================================
      SHADERS
@@ -2303,8 +2320,7 @@
     blurProg   = prog(BLUR_FRAG, 'o');
     compProg   = prog(COMP_FRAG, 'fragColor');
   }catch(e){
-    fatal.textContent = 'Visual engine failed to start: ' + e.message;
-    fatal.style.display = 'grid';
+    showFatal('Visual engine failed to start: ' + e.message);
     return;
   }
 
@@ -2329,6 +2345,10 @@
     const fbo = gl.createFramebuffer();
     gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if(status !== gl.FRAMEBUFFER_COMPLETE){
+      throw new Error('Framebuffer setup failed on this GPU/browser: 0x' + status.toString(16));
+    }
     return { tex, fbo, w, h };
   }
 
@@ -2374,7 +2394,12 @@
     applySize();
   }
   window.addEventListener('resize', resize);
-  resize();
+  try{
+    resize();
+  }catch(e){
+    showFatal('Visual engine failed to allocate GPU buffers: ' + (e && e.message ? e.message : String(e)));
+    return;
+  }
 
   function drawFull(program){
     if(isWebGL2){
@@ -4958,7 +4983,25 @@
   applyLook(initialLook, true);     // boot into saved/default look, then restore detailed UI state
   restoreUiState();
 
+  let renderStopped = false;
   function render(now){
+    if(renderStopped) return;
+    try{
+      renderFrame(now);
+    }catch(e){
+      renderStopped = true;
+      try{
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.viewport(0, 0, cvs.width || 2, cvs.height || 2);
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+      }catch(_){}
+      console.error('Render loop stopped:', e);
+      showFatal('Visual engine stopped: ' + (e && e.message ? e.message : String(e)));
+    }
+  }
+
+  function renderFrame(now){
     const perfFrameStart = performance.now();
     const perfSample = perfLoggingEnabled ? {
       logic:0,
