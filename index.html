@@ -1151,8 +1151,7 @@
   const isWebGL2 = !!(gl && typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext);
   const bootParams = new URLSearchParams(location.search);
   const forceFullEngine = bootParams.get('full') === '1';
-  const forceLiteEngine = bootParams.get('lite') === '1'
-    || (!forceFullEngine && /\bWindows\b/i.test(navigator.userAgent || ''));
+  const forceLiteEngine = !forceFullEngine && bootParams.get('lite') === '1';
   const ASSET_VERSION = '20260711-assets2';
   const WOODS_LOGO_URL = `logo.png?v=${ASSET_VERSION}`;
   function showFatal(message){
